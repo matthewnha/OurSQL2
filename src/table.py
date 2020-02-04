@@ -53,18 +53,30 @@ class Table:
             # Schema Encoding
             col_page_idx = new_page_range.createBasePage()
             col_page = new_page_range.getPage(col_page_idx)
-            col_page.write(bytes(schema_encoding))
+            bytes_to_write = bytes(schema_encoding)
+            col_page.write(bytes_to_write)
+
+            # bytes_out = col_page.read(0)
+            # ret_enc = ''
+            # for byte in bytes_out:
+            #     print(byte)
+            #     ret_enc += '' + str(byte)
+            # print(ret_enc)
 
             # Key
+            key_page_idx = new_page_range.createBasePage()
+            key_page = new_page_range.getPage(key_page_idx)
+            print(key)
+            bytes_to_write = key.to_bytes(CellSizeInBytes, 'little')
+            key_page.write(bytes_to_write)
+            bytes_out = key_page.read(0)
 
             # User Data
             for i in range(self.num_columns):
                 col_page_idx = new_page_range.createBasePage()
                 col_page = new_page_range.getPage(col_page_idx)
-                col_page.write([columns_data[i]])
-
-                bytesOut = col_page.read(0)
-                print(int.from_bytes(bytesOut, 'little'))
+                bytes_to_write = bytes([columns_data[i]])
+                col_page.write(bytes_to_write)
             
         else:
             pass
