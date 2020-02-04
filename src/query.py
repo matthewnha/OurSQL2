@@ -1,6 +1,6 @@
 from table import Table, Record
 from index import Index
-
+import time
 
 class Query:
     """
@@ -23,9 +23,20 @@ class Query:
     # Insert a record with specified columns
     """
 
+    # INDIRECTION_COLUMN = 0
+    # RID_COLUMN = 1
+    # TIMESTAMP_COLUMN = 2
+    # SCHEMA_ENCODING_COLUMN = 3
+
     def insert(self, *columns):
-        schema_encoding = '0' * self.table.num_columns
-        pass
+        keyCol = self.table.key
+
+        data = columns[1:keyCol]
+        if keyCol < self.table.num_columns - 1:
+            data += columns[keyCol+1:]
+        ok = self.table.createRow(columns[keyCol], data)
+
+        return ok
 
     """
     # Read a record with specified key
