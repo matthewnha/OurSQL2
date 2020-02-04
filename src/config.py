@@ -3,5 +3,5 @@
 
 PageRangeMaxSize = 12
 PageRangeMaxBasePages = 4
-CellsPerPage = 1024
+CellsPerPage = 500
 CellSizeInBytes = round(4096 / CellsPerPage)

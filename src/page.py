@@ -8,14 +8,16 @@ class Page:
         self.cellSize = round(4096 / CellsPerPage)
 
     def has_capacity(self):
-        pass
+        return self.num_records < CellsPerPage
 
     def write(self, value):
         '''
             Writes bytes to the page
+
             value: Must be bytes of the specified CellsPerPage size
         '''
-        if self.num_records >= CellsPerPage:
+
+        if not self.has_capacity():
             raise Exception('page is full')
 
         start = self.num_records * self.cellSize
@@ -29,6 +31,7 @@ class Page:
         '''
             Reads bytes from page, returning a bytearray
         '''
+
         if cellIndex > CellsPerPage - 1:
             raise Exception('cellIndex exceeds page size')
 
