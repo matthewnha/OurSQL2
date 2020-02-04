@@ -1,4 +1,5 @@
-from template.page import *
+from page import *
+from index import Index
 from time import time
 
 INDIRECTION_COLUMN = 0
