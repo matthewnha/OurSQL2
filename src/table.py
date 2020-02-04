@@ -32,4 +32,4 @@ class Table:
 
     def __merge(self):
         pass
- 
+
