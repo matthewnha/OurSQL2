@@ -1,7 +1,8 @@
 # Global Setting for the Database
 # PageSize, StartRID, etc..
 
-PageRangeMaxSize = 12
-PageRangeMaxBasePages = 16
+ByteOrder = 'little'
+PageRangeMaxBasePages = 50 # max columns
+PageRangeMaxSize = 200 # 150 tail pages possible
 CellsPerPage = 500
 CellSizeInBytes = round(4096 / CellsPerPage)

@@ -4,12 +4,13 @@ from index import Index
 from time import time
 from config import *
 from math import ceil
+from util import *
 
 INDIRECTION_COLUMN = 0
 RID_COLUMN = 1
 TIMESTAMP_COLUMN = 2
 SCHEMA_ENCODING_COLUMN = 3
-
+START_USER_DATA_COLUMN = 4
 
 class Record:
 
@@ -29,10 +30,12 @@ class Table:
         self.name = name
         self.key = key
         self.num_columns = num_columns
+        self.page_ranges = []
         self.page_directory = {}
         self.key_index = {} # key -> base record PID
         self.index = Index(self)
         self.num_rows = 0
+        self.last_rid = -1
         pass
 
     def createRow(self, key, columns_data):
@@ -43,43 +46,78 @@ class Table:
 
         if num_pages_in_last == 0:
             new_page_range = PageRange()
+            self.page_ranges.append(new_page_range)
 
-            # Indirection TODO
+            # Order of createBasePages are strict!
+            indirection_page = new_page_range.createBasePage()[1]
+            rid_page = new_page_range.createBasePage()[1]
+            time_page = new_page_range.createBasePage()[1]
+            schema_page = new_page_range.createBasePage()[1]
 
-            # RID TODO
-
-            # Timestamp TODO
-
-            # Schema Encoding
-            col_page_idx = new_page_range.createBasePage()
-            col_page = new_page_range.getPage(col_page_idx)
-            bytes_to_write = bytes(schema_encoding)
-            col_page.write(bytes_to_write)
-
-            # bytes_out = col_page.read(0)
-            # ret_enc = ''
-            # for byte in bytes_out:
-            #     print(byte)
-            #     ret_enc += '' + str(byte)
-            # print(ret_enc)
-
-            # Key
-            key_page_idx = new_page_range.createBasePage()
-            key_page = new_page_range.getPage(key_page_idx)
-            print(key)
-            bytes_to_write = key.to_bytes(CellSizeInBytes, 'little')
-            key_page.write(bytes_to_write)
-            bytes_out = key_page.read(0)
-
-            # User Data
-            for i in range(self.num_columns):
-                col_page_idx = new_page_range.createBasePage()
-                col_page = new_page_range.getPage(col_page_idx)
-                bytes_to_write = bytes([columns_data[i]])
-                col_page.write(bytes_to_write)
+            key_page = new_page_range.createBasePage()[1]
+            column_pages = [new_page_range.createBasePage()[1] for _ in range(self.num_columns - 1)]
             
-        else:
-            pass
+        else: # last page range has space
+            page_range = self.page_ranges[num_page_ranges - 1] # type: PageRange # last page range 
+            indirection_page = page_range.getPage(INDIRECTION_COLUMN)
+            rid_page = page_range.getPage(RID_COLUMN)
+            time_page = page_range.getPage(TIMESTAMP_COLUMN)
+            schema_page = page_range.getPage(SCHEMA_ENCODING_COLUMN)
+            key_page = page_range.getPage(START_USER_DATA_COLUMN)
+            column_pages = [page_range.getPage(START_USER_DATA_COLUMN+i) for i in range(self.num_columns - 1)]
+
+        # RID
+        self.last_rid += 1
+        rid = self.last_rid
+        rid_in_bytes = int_to_bytes(rid)
+        num_records_in_page = rid_page.write(rid_in_bytes)
+
+        # Indirection
+        indirection_page.write(rid_in_bytes)
+
+        # Timestamp
+        bytes_to_write = b'\x00'
+        time_page.write(bytes_to_write)
+
+        # Schema Encoding
+        bytes_to_write = bytes(schema_encoding)
+        schema_page.write(bytes_to_write)
+
+        # Key
+        bytes_to_write = int_to_bytes(key)
+        key_page.write(bytes_to_write)
+
+        # User Data
+        for i in range(len(column_pages)):
+            column_page = column_pages[i]
+            bytes_to_write = int_to_bytes(columns_data[i])
+            column_page.write(bytes_to_write)
+        
+        self.num_rows += 1
+        page_range_idx = ceil(self.num_rows / CellsPerPage) - 1
+        page_idx = self.num_rows % CellsPerPage - 1
+        cell_idx = num_records_in_page - 1
+
+        self.page_directory[rid] = (cell_idx, page_idx, page_range_idx)
+        self.key_index[key] = rid
+
+    def select(self, key, query_columns):
+        rid = self.key_index[key]
+        pid = self.page_directory[rid]
+        cell_idx, page_idx, page_range_idx = pid
+
+        page_range = self.page_ranges[page_range_idx] # type: PageRange
+
+        resp = []
+
+        for i, do_query in enumerate(query_columns):
+            if (do_query):
+                page = page_range.getPage(START_USER_DATA_COLUMN + i) # type: Page
+                data = page.read(cell_idx)
+                resp.append(int_from_bytes(data))
+
+        return resp
+
 
     def __merge(self):
         pass

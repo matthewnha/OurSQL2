@@ -10,6 +10,9 @@ class Page:
     def has_capacity(self):
         return self.num_records < CellsPerPage
 
+    def get_num_records(self):
+        return self.num_records
+
     def write(self, value):
         '''
             Writes bytes to the page

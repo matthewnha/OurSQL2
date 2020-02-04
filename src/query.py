@@ -29,6 +29,9 @@ class Query:
     # SCHEMA_ENCODING_COLUMN = 3
 
     def insert(self, *columns):
+        if len(columns) > self.table.num_columns:
+            raise Exception('More arguments than columns'
+        )
         keyCol = self.table.key
 
         data = columns[1:keyCol]
@@ -45,7 +48,7 @@ class Query:
     """
 
     def select(self, key, query_columns):
-        pass
+        return self.table.select(key, query_columns)
 
     """
     # Update a record with specified key and columns

@@ -24,7 +24,7 @@ class PageRange:
 
         self.basePageCount += 1
 
-        return pageIndex
+        return (pageIndex, newPage)
 
     def createTailPage(self):
         if self.basePageCount >= PageRangeMaxBasePages:
@@ -36,7 +36,7 @@ class PageRange:
 
         self.tailPageCount += 1
 
-        return pageIndex
+        return (pageIndex, newPage)
 
     def getPage(self, pageIndex):
         return self.pages[pageIndex]
