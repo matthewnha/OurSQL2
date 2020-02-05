@@ -1,4 +1,4 @@
-from table import Table, Record
+from table import Table, RecordPids
 from index import Index
 import time
 
@@ -105,4 +105,4 @@ class Query:
     """
 
     def sum(self, start_range, end_range, aggregate_column_index):
-        pass
+        return self.table.sum_records(start_range, end_range, aggregate_column_index)

@@ -342,7 +342,8 @@ class Table:
 
 
         base_indir_page_pid = base_record.columns[INDIRECTION_COLUMN]
-        new_tail_rid = self.read(base_indir_page_pid)
+        new_tail_rid = self.read_pid(base_indir_page_pid)
+        new_tail_rid = int_from_bytes(new_tail_rid)
 
 
         while True:
@@ -350,17 +351,18 @@ class Table:
             new_tail_rid_page = self.get_page(new_tail_record.columns[RID_COLUMN]) # type: Page
             new_tail_rid_cell_inx,_,_ = new_tail_record.columns[RID_COLUMN]
 
-            new_tail_rid_page.writeToCell(0,new_tail_rid_cell_inx)
+            new_tail_rid_page.writeToCell(int_to_bytes(0),new_tail_rid_cell_inx)
             self.page_directory[new_tail_rid] = 0
 
             if(base_rid == new_tail_rid):
                 break
             else:
                 new_tail_indir_page_pid = new_tail_record.columns[INDIRECTION_COLUMN]
-                new_tail_rid = self.read(new_tail_indir_page_pid)
+                new_tail_rid = self.read_pid(new_tail_indir_page_pid)
+                new_tail_rid = int_from_bytes(new_tail_rid)
 
 
-        base_rid_page.write(0,base_rid_cell_inx)
+        base_rid_page.writeToCell(int_to_bytes(0),base_rid_cell_inx)
         self.page_directory[new_tail_rid] = 0
         self.key_index[key] = 0
 

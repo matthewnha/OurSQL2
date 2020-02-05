@@ -24,11 +24,11 @@ query = Query(grades_table)
 #     print('Matched', fetched, row)
 
 query.insert(9399394, 1, 2, 3, 4)
-# query.update(9399394, [None, None, 6, None, None])
+query.update(9399394, [None, None, 6, None, None])
 # query.update(9399394, [None, 10, None, None, None])
 # query.update(9399394, [None, 11, None, None, 9])
 
-# query.insert(9399395, 5, 6, 7, 8)
+query.insert(9399395, 5, 6, 7, 8)
 # query.update(9399395, [None, 99, 88, None, None])
 # query.update(9399395, [None, 100, None, None, None])
 # query.update(9399395, [None, None, None, None, 200])
@@ -36,4 +36,8 @@ query.insert(9399394, 1, 2, 3, 4)
 print(query.select(9399394, [1,1,1,1,1])[0])
 # print(query.select(9399395, [1,1,1,1,1])[0])
 
-query.delete(9399394)
+# query.delete(9399394)
+
+# print('shouldnnt', query.select(9399394, [1,1,1,1,1])[0])
+
+print(query.sum(9399394, 9399395, [1, 1, 1, 1, 1]))
