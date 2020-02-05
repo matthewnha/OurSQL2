@@ -133,7 +133,6 @@ class Table:
         # Schema Encoding
         schema_encoding = [0 for _ in range(self.num_columns)]
         bytes_to_write = bytes(schema_encoding)
-        print('bytes_to_write', bytes_to_write)
         schema_page.write(bytes_to_write)
 
         # User Data
@@ -251,16 +250,8 @@ class Table:
             mask = mask << 1
 
         read = base_enc_page.read(base_enc_cell_idx)
-        print(read)
         bytes_to_write = bytes(list_schema_enc)
         base_enc_page.writeToCell(bytes_to_write, base_enc_cell_idx)
-        print(bytes_to_write)
-
-        read = base_enc_page.read(base_enc_cell_idx)[0: self.num_columns]
-        print(read)
-        print(parse_schema_enc_from_bytes(read))
-
-        # print('enc', base_schema_enc, tail_schema_enc, new_base_enc_binary, new_base_enc)
 
         return True
 
