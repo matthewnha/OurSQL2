@@ -368,38 +368,32 @@ class Table:
         return True
 
 
-    # # def sum_records(self, start_range, end_range, aggregate_column_index):
-    # #     col_idx = aggregate_column_index + START_USER_DATA_COLUMN
-    # #     query_columns = [0]*self.num_columns
-    # #     query_columns [aggregate_column_index] = 1
-    #
-    # #     sum = 0
-    # #     start_rid = self.key_index[start_range]
-    # #     end_rid = self.key[end_range]
-    #
-    # #     for i in range(start_idx,end_idx):
-    #     sum = 0
-    #
-    #     curr_rid = self.key_index[start_range]
-    #     curr_key = start_range
-    #
-    #     for i in range(0,(start_range-end_range)):
-    #         curr_rid = self.key_index[curr_key]
-    #         if curr_rid == 0:
-    #             continue
-    #         sum += self.collapse_row(start_range,query_columns)
-    #         curr_key += 1
-    #
-    #     return sum
-    #
+    def sum_records(self, start_range, end_range, aggregate_column_index):
+        col_idx = aggregate_column_index + START_USER_DATA_COLUMN
+        query_columns = [0]*self.num_columns
+        query_columns [aggregate_column_index] = 1
+
+        sum = 0
+
+        curr_rid = self.key_index[start_range]
+        curr_key = start_range
+
+        for i in range(0,(start_range-end_range)):
+            curr_rid = self.key_index[curr_key]
+            if curr_rid == 0:
+                continue
+
+            sum += self.collapse_row(start_range,query_columns)
+            curr_key += 1
+
+        return sum
+        
 
 
 
 
 
-    #     base_rid = 0
-    #     rid_in_bytes = int_to_bytes(base_rid)
-    #     num_records_in_page = rid_page.write(base_rid)
+
 
     def __merge(self):
         pass
