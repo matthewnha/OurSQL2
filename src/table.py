@@ -12,7 +12,7 @@ TIMESTAMP_COLUMN = 2
 SCHEMA_ENCODING_COLUMN = 3
 START_USER_DATA_COLUMN = 4
 
-class Record:
+class RecordPids:
 
     def __init__(self, rid, key, columns):
         self.rid = rid
@@ -36,7 +36,7 @@ class Table:
 
         self.page_ranges = []
         self.page_directory = {}
-        self.key_index = {} # key -> base record PID
+        self.key_index = {} # key -> base RecordPidsPids PID
         self.index = Index(self)
 
         self.prev_rid = 0
@@ -156,7 +156,7 @@ class Table:
 
         sys_cols = [indirection_pid, rid_pid, time_pid, schema_pid]
         data_cols = [pid for pid, _ in column_pids_and_pages]
-        record = Record(rid, key, sys_cols + data_cols)
+        record = RecordPids(rid, key, sys_cols + data_cols)
         self.page_directory[rid] = record
         self.key_index[key] = rid
         self.num_rows += 1
@@ -164,7 +164,7 @@ class Table:
     def update_row(self, key, update_data):
          # todo: traverse tail records
         base_rid = self.key_index[key]
-        base_record = self.page_directory[base_rid] # type: Record
+        base_record = self.page_directory[base_rid] # type: RecordPids
         schema_encoding = [0 if new_col_val == None else 1 for new_col_val in update_data]
 
         if 0 == sum(schema_encoding):
@@ -252,7 +252,7 @@ class Table:
             pid = [cell_idx, inner_page_idx, page_range_idx]  
             data_columns.append(pid)
 
-        tail_record = Record(new_rid, key, meta_columns + data_columns)
+        tail_record = RecordPids(new_rid, key, meta_columns + data_columns)
         self.page_directory[new_rid] = tail_record
 
         # Update base record indirection and schema
@@ -291,7 +291,7 @@ class Table:
         rid = self.key_index[key]
         need = query_columns.copy()
 
-        base_record = self.page_directory[rid] # type: Record
+        base_record = self.page_directory[rid] # type: RecordPids
         base_enc_pid = base_record.columns[SCHEMA_ENCODING_COLUMN]
         base_enc_bytes = self.read_pid(base_enc_pid)
         base_enc = parse_schema_enc_from_bytes(base_enc_bytes)[0:self.num_columns]
@@ -336,7 +336,7 @@ class Table:
         except KeyError:
             raise Exception("Not a valid key")
 
-        base_record = self.page_directory[base_rid]  # type: Record
+        base_record = self.page_directory[base_rid]  # type: RecordPids
         base_rid_page = self.get_page(base_record.columns[RID_COLUMN])
         base_rid_cell_inx,_,_ = base_record.columns[RID_COLUMN]
 
@@ -363,7 +363,7 @@ class Table:
         self.page_directory[new_tail_rid] = 0
         self.key_index[key] = 0
 
-        print("Record deleted")
+        print("RecordPids deleted")
         return True
 
 
