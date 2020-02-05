@@ -288,8 +288,9 @@ class Table:
         return True
 
     def select(self, key, query_columns):
-        if self.key_index[key] == 0:
-            raise Exception("Record was deleted")
+        if 0 == self.key_index[key]:
+            raise Exception("Not a valid key")
+
         collapsed = self.collapse_row(key, query_columns)
         entry = {
             'columns': collapsed
@@ -346,9 +347,9 @@ class Table:
         return resp
 
     def delete_record(self, key):
-        try:
-            base_rid = self.key_index[key]
-        except KeyError:
+        base_rid = self.key_index[key]
+        
+        if 0 == base_rid:
             raise Exception("Not a valid key")
 
         base_record = self.page_directory[base_rid]  # type: RecordPids
