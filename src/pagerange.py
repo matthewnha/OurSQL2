@@ -65,7 +65,6 @@ class PageRange:
         else:
             inner_idx, tail_page = self.get_latest_tail()
             is_open = tail_page.has_capacity()
-            print('isopen', is_open)
             if not is_open:
                 inner_idx, tail_page = self.create_tail_page()
 

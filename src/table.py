@@ -201,7 +201,6 @@ class Table:
         ind_cell_idx = num_records_in_page - 1
         indirection_pid[0] = ind_cell_idx
 
-        print('Getting tail page for rid page')
         _,_,page_range_idx = base_record.columns[RID_COLUMN]
         page_range = self.page_ranges[page_range_idx] # type: PageRange
         rid_inner_idx, rid_page = page_range.get_open_tail_page()
@@ -215,7 +214,6 @@ class Table:
         rid_cell_idx = num_records_in_page - 1
         rid_pid[0] = rid_cell_idx
 
-        print('Getting tail page for time page')
         _,_,page_range_idx = base_record.columns[TIMESTAMP_COLUMN]
         page_range = self.page_ranges[page_range_idx] # type: PageRange
         time_inner_idx, time_page = page_range.get_open_tail_page()
@@ -234,16 +232,18 @@ class Table:
 
         # write encoding
         bytes_to_write = int_to_bytes(tail_schema_encoding)
+        print("is writing",bytes_to_write)
         num_records_in_page = schema_page.write(bytes_to_write)
         schema_cell_idx = num_records_in_page - 1
         schema_pid[0] = schema_cell_idx
+        read = self.read_pid(schema_pid)
+        print("is reading",read)
 
         meta_columns = [indirection_pid, rid_pid, time_pid, schema_pid]
 
         # Data Columns
         data_columns = []
         tail_schema_encoding_binary = bin(tail_schema_encoding)[2:].zfill(self.num_columns)
-        print(tail_schema_encoding_binary," encoding")
         for i, pid in enumerate(update_data):
             if '0' == tail_schema_encoding_binary[i]:
                 data_columns.append(None)
@@ -254,7 +254,6 @@ class Table:
             page_range = self.page_ranges[page_range_idx] # type: PageRange
 
             # Get/make open tail page from the respective og page range
-            print(update_data, " at ", i)
             inner_page_idx, tail_page = page_range.get_open_tail_page()
             bytes_to_write = int_to_bytes(update_data[i])
             num_records = tail_page.write(bytes_to_write)
@@ -272,7 +271,7 @@ class Table:
         base_schema_enc_bytes = base_enc_page.read(base_enc_cell_idx)
         base_schema_enc_int = int_from_bytes(base_schema_enc_bytes)
         new_base_enc = base_schema_enc_int | tail_schema_encoding
-
+        print(new_base_enc)
         bytes_to_write = int_to_bytes(new_base_enc)
         base_enc_page.writeToCell(bytes_to_write, base_enc_cell_idx)
         return True
@@ -296,10 +295,10 @@ class Table:
         base_record = self.page_directory[rid] # type: RecordPids
         base_enc_pid = base_record.columns[SCHEMA_ENCODING_COLUMN]
         base_enc_bytes = self.read_pid(base_enc_pid)
-        base_enc = bin(int_from_bytes(base_enc_bytes))
+        base_enc_binary = bin(int_from_bytes(base_enc_bytes))[2:].zfill(self.num_columns)
 
-        for data_col_idx, is_dirty in enumerate(base_enc):
-            if is_dirty == 1 or need[data_col_idx] == 0:
+        for data_col_idx, is_dirty in enumerate(base_enc_binary):
+            if is_dirty == '1' or need[data_col_idx] == 0:
                 continue
             col_pid = base_record.columns[START_USER_DATA_COLUMN + data_col_idx]
             data = self.read_pid(col_pid)
@@ -312,15 +311,16 @@ class Table:
             curr_indir_pid = curr_record.columns[INDIRECTION_COLUMN]
             next_rid = self.read_pid(curr_indir_pid)
             next_rid = int_from_bytes(next_rid)
+            print(next_rid)
             curr_record = self.page_directory[next_rid]
             curr_enc_pid = curr_record.columns[SCHEMA_ENCODING_COLUMN]
             curr_enc_bytes = self.read_pid(curr_enc_pid)
 
-            curr_enc = parse_schema_enc_from_bytes(curr_enc_bytes)[0:self.num_columns]
-            curr_enc = [int(x) for x in curr_enc]
+            curr_enc = int_from_bytes(curr_enc_bytes)
+            curr_enc_binary = bin(curr_enc)[2:].zfill(self.num_columns)
 
-            for data_col_idx, is_updated in enumerate(curr_enc):
-                if is_updated == 0 or need[data_col_idx] == 0:
+            for data_col_idx, is_updated in enumerate(curr_enc_binary):
+                if is_updated == '0' or need[data_col_idx] == 0:
                     continue
                 col_pid = curr_record.columns[START_USER_DATA_COLUMN + data_col_idx]
 
