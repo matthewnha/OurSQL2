@@ -244,7 +244,6 @@ class Table:
         # Data Columns
         data_columns = []
         tail_schema_encoding_binary = bin(tail_schema_encoding)[2:].zfill(self.num_columns)
-        print(tail_schema_encoding_binary," encoding")
         for i, pid in enumerate(update_data):
             if '0' == tail_schema_encoding_binary[i]:
                 data_columns.append(None)
@@ -255,7 +254,6 @@ class Table:
             page_range = self.page_ranges[page_range_idx] # type: PageRange
 
             # Get/make open tail page from the respective og page range
-            print(update_data, " at ", i)
             inner_page_idx, tail_page = page_range.get_open_tail_page()
             bytes_to_write = int_to_bytes(update_data[i])
             num_records = tail_page.write(bytes_to_write)
