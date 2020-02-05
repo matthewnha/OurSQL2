@@ -275,7 +275,12 @@ class Table:
         return True
 
     def select(self, key, query_columns):
-        return self.collapse_row(key, query_columns)
+        collapsed = self.collapse_row(key, query_columns)
+        entry = {
+            'columns': collapsed
+        }
+
+        return [entry]
 
     def collapse_row(self, key, query_columns):
         resp = [None for _ in query_columns]
@@ -325,50 +330,25 @@ class Table:
         try:
             base_rid = self.key_index[key]
         except KeyError:
-            print("Not a valid key")
-            return False
+            raise Exception("Not a valid key")
 
         base_record = self.page_directory[base_rid]  # type: Record
-        base_rid_page = self.get_page(base_record.columns[RID_COLUMN])
-        base_rid_cell_inx,_,_ = base_record.columns[RID_COLUMN]
-
-        base_indir_page_pid = base_record.columns[INDIRECTION_COLUMN]
-        new_tail_rid = self.read(base_indir_page_pid)
-
-        while True:
-
-            new_tail_record = self.page_directory[new_tail_rid]
-            new_tail_rid_page = self.get_page(new_tail_record.columns[RID_COLUMN]) # type: Page
-            new_tail_rid_cell_inx,_,_ = new_tail_record.columns[RID_COLUMN]
-
-            new_tail_rid_page.writeToCell(0,new_tail_rid_cell_inx)
-            del self.page_directory[new_tail_rid]
-
-            if(base_rid == new_tail_rid):
-                break
-            else:
-                new_tail_indir_page_pid = new_tail_record.columns[INDIRECTION_COLUMN]
-                new_tail_rid = self.read(new_tail_indir_page_pid)
-
-
-        base_rid_page.write(0,base_rid_cell_inx)
-        del self.page_directory[new_tail_rid]
-        del self.key_index[key]
+        
 
         print("Record deleted")
         return True
 
 
-    def sum_records(self, start_range, end_range, aggregate_column_index):
-        col_idx = aggregate_column_index + START_USER_DATA_COLUMN
-        query_columns = [0]*self.num_columns
-        query_columns [aggregate_column_index] = 1
+    # def sum_records(self, start_range, end_range, aggregate_column_index):
+    #     col_idx = aggregate_column_index + START_USER_DATA_COLUMN
+    #     query_columns = [0]*self.num_columns
+    #     query_columns [aggregate_column_index] = 1
 
-        sum = 0
-        start_rid = self.key_index[start_range]
-        end_rid = self.key[end_range]
+    #     sum = 0
+    #     start_rid = self.key_index[start_range]
+    #     end_rid = self.key[end_range]
 
-        for i in range(start_idx,end_idx):
+    #     for i in range(start_idx,end_idx):
 
 
         
@@ -377,9 +357,9 @@ class Table:
 
 
 
-        base_rid = 0
-        rid_in_bytes = int_to_bytes(base_rid)
-        num_records_in_page = rid_page.write(base_rid)
+    #     base_rid = 0
+    #     rid_in_bytes = int_to_bytes(base_rid)
+    #     num_records_in_page = rid_page.write(base_rid)
 
     def __merge(self):
         pass
