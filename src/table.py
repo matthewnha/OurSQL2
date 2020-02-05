@@ -334,7 +334,7 @@ class Table:
 
         return resp
 
-    def delete(self, key):
+    def delete_record(self, key):
         try:
             base_rid = self.key_index[key]
         except KeyError:
@@ -372,10 +372,21 @@ class Table:
         return True
 
 
+    def sum_records(self, start_range, end_range, aggregate_column_index):
+        col_idx = aggregate_column_index + START_USER_DATA_COLUMN
+        query_columns = [0]*self.num_columns
+        query_columns [aggregate_column_index] = 1
 
-    def select(self,key):
+        sum = 0
+        start_rid = self.key_index[start_range]
+        end_rid = self.key[end_range]
+
+        for i in range(start_idx,end_idx):
+
 
         
+
+
 
 
 
