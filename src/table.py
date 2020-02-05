@@ -144,8 +144,8 @@ class Table:
         time_page.write(bytes_to_write)
 
         # Schema Encoding
-        schema_encoding = [0 for _ in range(self.num_columns)]
-        bytes_to_write = bytes(schema_encoding)
+        schema_encoding = 0b0000
+        bytes_to_write = int_to_bytes(schema_encoding)
         print('write insert', key, schema_pid, bytes_to_write)
         schema_page.write(bytes_to_write)
 
@@ -168,7 +168,14 @@ class Table:
          # todo: traverse tail records
         base_rid = self.key_index[key]
         base_record = self.page_directory[base_rid] # type: RecordPids
-        schema_encoding = [0 if new_col_val == None else 1 for new_col_val in update_data]
+
+        schema_encoding = 0
+
+        for i,value in enumerate(update_data):
+            if value is None:
+                schema_encoding += 0
+            else:
+                schema_encoding += 2**i
 
         if 0 == sum(schema_encoding):
             return False
@@ -285,7 +292,6 @@ class Table:
         bytes_to_write = bytes(list_schema_enc)
         print('write update', key, bytes_to_write)
         base_enc_page.writeToCell(bytes_to_write, base_enc_cell_idx)
-
         return True
 
     def select(self, key, query_columns):
@@ -325,9 +331,9 @@ class Table:
             next_rid = self.read_pid(curr_indir_pid)
             next_rid = int_from_bytes(next_rid)
             curr_record = self.page_directory[next_rid]
-
             curr_enc_pid = curr_record.columns[SCHEMA_ENCODING_COLUMN]
             curr_enc_bytes = self.read_pid(curr_enc_pid)
+
             curr_enc = parse_schema_enc_from_bytes(curr_enc_bytes)[0:self.num_columns]
             curr_enc = [int(x) for x in curr_enc]
 
