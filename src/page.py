@@ -1,11 +1,10 @@
 from config import *
-
 class Page:
 
     def __init__(self):
         self.num_records = 0
         self.data = bytearray(4096)
-        self.cellSize = round(4096 / CELLS_PER_PAGE)
+        self.cellSize = 4096 // CELLS_PER_PAGE
 
     def has_capacity(self):
         return self.num_records < CELLS_PER_PAGE
@@ -19,14 +18,12 @@ class Page:
 
             value: Must be bytes of the specified CELLS_PER_PAGE size
         '''
-
         if not self.has_capacity():
             raise Exception('page is full')
 
         start = self.num_records * self.cellSize
         end = start + self.cellSize
         self.data[start:end] = value
-
         self.num_records += 1
         return self.num_records
 
