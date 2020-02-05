@@ -333,7 +333,9 @@ class Table:
             raise Exception("Not a valid key")
 
         base_record = self.page_directory[base_rid]  # type: Record
-        
+        base_rid_page = self.get_page(base_record.columns[RID_COLUMN])
+        base_rid_cell_idx,_,_ = base_record.columns[RID_COLUMN]
+
 
         print("Record deleted")
         return True
