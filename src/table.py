@@ -232,12 +232,12 @@ class Table:
 
         # write encoding
         bytes_to_write = int_to_bytes(tail_schema_encoding)
-        print("is writing",bytes_to_write)
+        print(schema_pid, "pid is writing",bytes_to_write)
         num_records_in_page = schema_page.write(bytes_to_write)
         schema_cell_idx = num_records_in_page - 1
         schema_pid[0] = schema_cell_idx
         read = self.read_pid(schema_pid)
-        print("is reading",read)
+        print(schema_pid, "pid is reading", read,"schema")
 
         meta_columns = [indirection_pid, rid_pid, time_pid, schema_pid]
 
@@ -271,9 +271,10 @@ class Table:
         base_schema_enc_bytes = base_enc_page.read(base_enc_cell_idx)
         base_schema_enc_int = int_from_bytes(base_schema_enc_bytes)
         new_base_enc = base_schema_enc_int | tail_schema_encoding
-        print(new_base_enc)
+        #print(new_base_enc)
         bytes_to_write = int_to_bytes(new_base_enc)
         base_enc_page.writeToCell(bytes_to_write, base_enc_cell_idx)
+        
         return True
 
     def select(self, key, query_columns):
@@ -311,27 +312,27 @@ class Table:
             curr_indir_pid = curr_record.columns[INDIRECTION_COLUMN]
             next_rid = self.read_pid(curr_indir_pid)
             next_rid = int_from_bytes(next_rid)
-            print(next_rid)
             curr_record = self.page_directory[next_rid]
+
             curr_enc_pid = curr_record.columns[SCHEMA_ENCODING_COLUMN]
             curr_enc_bytes = self.read_pid(curr_enc_pid)
-
             curr_enc = int_from_bytes(curr_enc_bytes)
             curr_enc_binary = bin(curr_enc)[2:].zfill(self.num_columns)
+            #print(next_rid, "next", curr_enc_pid, "schema", curr_enc_binary, "order")
 
             for data_col_idx, is_updated in enumerate(curr_enc_binary):
+               # print("still needs",need,"curr schema",curr_enc_binary,"dex", data_col_idx, "at", is_updated)
                 if is_updated == '0' or need[data_col_idx] == 0:
                     continue
                 col_pid = curr_record.columns[START_USER_DATA_COLUMN + data_col_idx]
-
                 data = self.read_pid(col_pid)
                 data = int_from_bytes(data)
                 resp[data_col_idx] = data
                 need[data_col_idx] = 0
 
-        curr_indir_pid = curr_record.columns[INDIRECTION_COLUMN]
-        next_rid = self.read_pid(curr_indir_pid)
-        next_rid = int_from_bytes(next_rid)
+            # curr_indir_pid = curr_record.columns[INDIRECTION_COLUMN]
+            # next_rid = self.read_pid(curr_indir_pid)
+            # next_rid = int_from_bytes(next_rid)
 
         return resp
 
@@ -373,7 +374,7 @@ class Table:
 
 
     def sum_records(self, start_range, end_range, aggregate_column_index):
-        col_idx = aggregate_column_index + START_USER_DATA_COLUMN
+        #col_idx = aggregate_column_index + START_USER_DATA_COLUMN
         query_columns = [0]*self.num_columns
         query_columns [aggregate_column_index] = 1
 
@@ -382,12 +383,14 @@ class Table:
         curr_rid = self.key_index[start_range]
         curr_key = start_range
 
-        for i in range(0,(start_range-end_range)):
+        while curr_key != (end_range+1):
+            print(curr_key)
             curr_rid = self.key_index[curr_key]
             if curr_rid == 0:
                 continue
-
-            sum += self.collapse_row(start_range,query_columns)
+            value = self.collapse_row(curr_key,query_columns)[aggregate_column_index]
+            print(value)
+            sum += value
             curr_key += 1
 
         return sum
