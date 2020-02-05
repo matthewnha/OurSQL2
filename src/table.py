@@ -208,6 +208,8 @@ class Table:
         num_records_in_page = indirection_page.write(prev_update_rid_bytes)
         ind_cell_idx = num_records_in_page - 1
         indirection_pid[0] = ind_cell_idx
+        print(indirection_pid, "tail ",base_indir_page_pid,"base")
+
 
         # RID
         self.prev_rid += 1
@@ -216,6 +218,8 @@ class Table:
         num_records_in_page = rid_page.write(rid_in_bytes)
         rid_cell_idx = num_records_in_page - 1
         rid_pid[0] = rid_cell_idx
+
+
 
         # Timestamp todo: all timestamps
         bytes_to_write = b'\x00'
@@ -254,7 +258,6 @@ class Table:
 
         tail_record = RecordPids(new_rid, key, meta_columns + data_columns)
         self.page_directory[new_rid] = tail_record
-
         # Update base record indirection and schema
         new_rid_bytes = int_to_bytes(new_rid)
         base_indir_page.writeToCell(new_rid_bytes, base_indir_cell_idx)
@@ -275,7 +278,6 @@ class Table:
         read = base_enc_page.read(base_enc_cell_idx)
         bytes_to_write = bytes(list_schema_enc)
         base_enc_page.writeToCell(bytes_to_write, base_enc_cell_idx)
-
         return True
 
     def select(self, key, query_columns):
@@ -328,6 +330,10 @@ class Table:
                 resp[data_col_idx] = data
                 need[data_col_idx] = 0
 
+        curr_indir_pid = curr_record.columns[INDIRECTION_COLUMN]
+        next_rid = self.read_pid(curr_indir_pid)
+        next_rid = int_from_bytes(next_rid)
+
         return resp
 
     def delete_record(self, key):
@@ -342,28 +348,30 @@ class Table:
 
 
         base_indir_page_pid = base_record.columns[INDIRECTION_COLUMN]
-        new_tail_rid = self.read(base_indir_page_pid)
+        new_tail_rid = self.read_pid(base_indir_page_pid)
+        new_tail_rid = int_from_bytes(new_tail_rid)
 
 
         while True:
+            print(new_tail_rid, "death")
             new_tail_record = self.page_directory[new_tail_rid]
             new_tail_rid_page = self.get_page(new_tail_record.columns[RID_COLUMN]) # type: Page
             new_tail_rid_cell_inx,_,_ = new_tail_record.columns[RID_COLUMN]
 
-            new_tail_rid_page.writeToCell(0,new_tail_rid_cell_inx)
+            new_tail_rid_page.writeToCell(int_to_bytes(0),new_tail_rid_cell_inx)
             self.page_directory[new_tail_rid] = 0
 
             if(base_rid == new_tail_rid):
                 break
             else:
                 new_tail_indir_page_pid = new_tail_record.columns[INDIRECTION_COLUMN]
-                new_tail_rid = self.read(new_tail_indir_page_pid)
+                new_tail_rid = self.read_pid(new_tail_indir_page_pid)
+                new_tail_rid = int_from_bytes(new_tail_rid)
 
 
-        base_rid_page.write(0,base_rid_cell_inx)
+        base_rid_page.writeToCell(int_to_bytes(0),base_rid_cell_inx)
         self.page_directory[new_tail_rid] = 0
         self.key_index[key] = 0
-
         print("RecordPids deleted")
         return True
 

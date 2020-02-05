@@ -106,3 +106,4 @@ class Query:
 
     def sum(self, start_range, end_range, aggregate_column_index):
         return self.table.sum_records(start_range,end_range,aggregate_column_index)
+
