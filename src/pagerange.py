@@ -73,4 +73,5 @@ class PageRange:
         if inner_page_index < PAGE_RANGE_MAX_BASE_PAGES:
             return self.base_pages[inner_page_index]
 
-        return self.tail_pages[inner_page_index - (PAGE_RANGE_MAX_BASE_PAGES - 1)]
+        last_tp_index = inner_page_index - PAGE_RANGE_MAX_BASE_PAGES
+        return self.tail_pages[last_tp_index]
