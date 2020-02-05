@@ -49,6 +49,14 @@ class Table:
 
         return page
 
+    def read_pid(self, pid): # type: Page
+        cell_idx, page_idx, page_range_idx = pid
+        page_range = self.page_ranges[page_range_idx] # type: PageRange
+        page = page_range.get_page(page_idx) # type: Page
+        read = page.read(cell_idx)
+
+        return read
+
     def get_open_base_page(self, col_idx):
         # how many pages for this column exists
         num_col_pages = ceil(self.num_rows / CELLS_PER_PAGE)
@@ -257,18 +265,62 @@ class Table:
 
     def select(self, key, query_columns):
         # todo: traverse tail records
+        self.collapse_row(key, query_columns)
+
+        # rid = self.key_index[key]
+        # record = self.page_directory[rid]
+        # resp = []
+
+        # for i, pid in enumerate(record.columns[START_USER_DATA_COLUMN:]):
+        #     if query_columns[i] == 0:
+        #         continue
+        #     page = self.get_page(pid)
+        #     data = page.read(pid[0])
+        #     resp.append(int_from_bytes(data))
+
+        # return resp
+
+    def collapse_row(self, key, query_columns):
+        resp = [None for _ in query_columns]
         rid = self.key_index[key]
-        record = self.page_directory[rid]
-        
+        need = query_columns.copy()
 
-        resp = []
+        base_record = self.page_directory[rid] # type: Record
+        base_enc_pid = base_record.columns[SCHEMA_ENCODING_COLUMN]
+        base_enc_bytes = self.read_pid(base_enc_pid)
+        base_enc = parse_schema_enc_from_bytes(base_enc_bytes)[0:self.num_columns]
+        base_enc = [int(x) for x in base_enc]
 
-        for i, pid in enumerate(record.columns[START_USER_DATA_COLUMN:]):
-            if query_columns[i] == 0:
+        print(need, base_enc)
+
+        for data_col_idx, is_dirty in enumerate(base_enc):
+            if is_dirty == 1 or need[data_col_idx] == 0:
                 continue
-            page = self.get_page(pid)
-            data = page.read(pid[0])
-            resp.append(int_from_bytes(data))
+            col_pid = base_record.columns[START_USER_DATA_COLUMN + data_col_idx]
+            data = self.read_pid(col_pid)
+            resp[data_col_idx] = int_from_bytes(data)
+            need[data_col_idx] = 0
+
+        curr_record = base_record
+
+        # while sum(need) != 0:
+
+            
+
+        # while true:
+
+
+        # for i, do_query = enumerate(query_columns):
+        #     if not do_query:
+        #         continue
+
+
+        # for i, pid in enumerate(record.columns[START_USER_DATA_COLUMN:]):
+        #     if query_columns[i] == 0:
+        #         continue
+        #     page = self.get_page(pid)
+        #     data = page.read(pid[0])
+        #     resp.append(int_from_bytes(data))
 
         return resp
 
