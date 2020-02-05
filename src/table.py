@@ -117,6 +117,11 @@ class Table:
         return (pid, page)
 
     def create_row(self, columns_data):
+        key = columns_data[self.key_col]
+
+        if key in self.key_index:
+            raise Exception('Key already exists')
+
 
         # ORDER OF THESE LINES MATTER
         indirection_pid, indirection_page = self.get_open_base_page(INDIRECTION_COLUMN)
@@ -148,8 +153,7 @@ class Table:
             col_pid, col_page = col_pid_and_page
             bytes_to_write = int_to_bytes(columns_data[i])
             col_page.write(bytes_to_write)
-        
-        key = columns_data[self.key_col]
+
         sys_cols = [indirection_pid, rid_pid, time_pid, schema_pid]
         data_cols = [pid for pid, _ in column_pids_and_pages]
         record = Record(rid, key, sys_cols + data_cols)
@@ -342,7 +346,7 @@ class Table:
             new_tail_rid_cell_inx,_,_ = new_tail_record.columns[RID_COLUMN]
 
             new_tail_rid_page.writeToCell(0,new_tail_rid_cell_inx)
-            del self.page_directory[new_tail_rid]
+            self.page_directory[new_tail_rid] = 0
 
             if(base_rid == new_tail_rid):
                 break
@@ -352,8 +356,8 @@ class Table:
 
 
         base_rid_page.write(0,base_rid_cell_inx)
-        del self.page_directory[new_tail_rid]
-        del self.key_index[key]
+        self.page_directory[new_tail_rid] = 0
+        self.key_index[key] = 0
 
         print("Record deleted")
         return True
@@ -365,12 +369,19 @@ class Table:
         query_columns [aggregate_column_index] = 1
 
         sum = 0
-        start_rid = self.key_index[start_range]
-        end_rid = self.key[end_range]
 
-        for i in range(start_idx,end_idx):
+        curr_rid = self.key_index[start_range]
+        curr_key = start_range
 
+        for i in range(0,(start_range-end_range)):
+            curr_rid = self.key_index[curr_key]
+            if curr_rid == 0:
+                continue
 
+            sum += self.collapse_row(start_range,query_columns)
+            curr_key += 1
+
+        return sum
         
 
 
