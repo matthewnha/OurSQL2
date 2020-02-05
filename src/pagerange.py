@@ -38,7 +38,7 @@ class PageRange:
         '''
             Returns (inner_page_index, new_page)
         '''
-        inner_page_index = self.tail_page_count
+        inner_page_index = self.tail_page_count + PAGE_RANGE_MAX_BASE_PAGES
         new_page = Page()
         self.tail_pages.append(new_page)
         self.tail_page_count += 1
