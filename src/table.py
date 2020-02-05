@@ -324,6 +324,22 @@ class Table:
 
         return resp
 
+    def delete(self, key):
+        base_rid = self.key_index[key]
+        base_record = self.page_directory[base_rid]  # type: Record
+
+
+        base_indir_page_pid = base_record.columns[INDIRECTION_COLUMN]
+        base_indir_page = self.get_page(base_indir_page_pid)  # type: Page
+        base_indir_cell_idx, _, _ = base_indir_page_pid
+        
+
+
+
+        base_rid = 0
+        rid_in_bytes = int_to_bytes(base_rid)
+        num_records_in_page = rid_page.write(base_rid)
+
     def __merge(self):
         pass
 
