@@ -340,11 +340,12 @@ class Table:
         base_rid_page = self.get_page(base_record.columns[RID_COLUMN])
         base_rid_cell_inx,_,_ = base_record.columns[RID_COLUMN]
 
+
         base_indir_page_pid = base_record.columns[INDIRECTION_COLUMN]
         new_tail_rid = self.read(base_indir_page_pid)
 
-        while True:
 
+        while True:
             new_tail_record = self.page_directory[new_tail_rid]
             new_tail_rid_page = self.get_page(new_tail_record.columns[RID_COLUMN]) # type: Page
             new_tail_rid_cell_inx,_,_ = new_tail_record.columns[RID_COLUMN]
