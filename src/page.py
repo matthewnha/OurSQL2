@@ -7,7 +7,6 @@ class Page:
         self.cellSize = 4096 // CELLS_PER_PAGE
 
     def has_capacity(self):
-        print('has capacity',self.num_records,' vs ',CELLS_PER_PAGE,self.num_records < CELLS_PER_PAGE)
         return self.num_records < CELLS_PER_PAGE
 
     def get_num_records(self):

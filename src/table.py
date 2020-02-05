@@ -195,29 +195,19 @@ class Table:
         page_range = self.page_ranges[page_range_idx] # type: PageRange
         ind_inner_idx, indirection_page = page_range.get_open_tail_page()
         indirection_pid = [None, ind_inner_idx, page_range_idx]
+        
+        # write indirection
+        num_records_in_page = indirection_page.write(prev_update_rid_bytes)
+        ind_cell_idx = num_records_in_page - 1
+        indirection_pid[0] = ind_cell_idx
 
+        print('Getting tail page for rid page')
         _,_,page_range_idx = base_record.columns[RID_COLUMN]
         page_range = self.page_ranges[page_range_idx] # type: PageRange
         rid_inner_idx, rid_page = page_range.get_open_tail_page()
         rid_pid = [None, rid_inner_idx, page_range_idx]
 
-        _,_,page_range_idx = base_record.columns[TIMESTAMP_COLUMN]
-        page_range = self.page_ranges[page_range_idx] # type: PageRange
-        time_inner_idx, time_page = page_range.get_open_tail_page()
-        time_pid = [None, time_inner_idx, page_range_idx]
-
-        _,_,page_range_idx = base_record.columns[SCHEMA_ENCODING_COLUMN]
-        page_range = self.page_ranges[page_range_idx] # type: PageRange
-        schema_inner_idx, schema_page = page_range.get_open_tail_page()
-        schema_pid = [None, schema_inner_idx, page_range_idx]
-
-        # Indirection
-        num_records_in_page = indirection_page.write(prev_update_rid_bytes)
-        ind_cell_idx = num_records_in_page - 1
-        indirection_pid[0] = ind_cell_idx
-
-
-        # RID
+        # write rid
         self.prev_rid += 1
         new_rid = self.prev_rid
         rid_in_bytes = int_to_bytes(new_rid)
@@ -225,15 +215,24 @@ class Table:
         rid_cell_idx = num_records_in_page - 1
         rid_pid[0] = rid_cell_idx
 
+        print('Getting tail page for time page')
+        _,_,page_range_idx = base_record.columns[TIMESTAMP_COLUMN]
+        page_range = self.page_ranges[page_range_idx] # type: PageRange
+        time_inner_idx, time_page = page_range.get_open_tail_page()
+        time_pid = [None, time_inner_idx, page_range_idx]
 
-
-        # Timestamp todo: all timestamps
+        # write Timestamp todo: all timestamps
         bytes_to_write = b'\x00'
         num_records_in_page = time_page.write(bytes_to_write)
         time_cell_idx = num_records_in_page - 1
         time_pid[0] = time_cell_idx
 
-        # Schema Encoding
+        _,_,page_range_idx = base_record.columns[SCHEMA_ENCODING_COLUMN]
+        page_range = self.page_ranges[page_range_idx] # type: PageRange
+        schema_inner_idx, schema_page = page_range.get_open_tail_page()
+        schema_pid = [None, schema_inner_idx, page_range_idx]
+
+        # write encoding
         bytes_to_write = int_to_bytes(tail_schema_encoding)
         num_records_in_page = schema_page.write(bytes_to_write)
         schema_cell_idx = num_records_in_page - 1
@@ -277,8 +276,9 @@ class Table:
         return True
 
     def select(self, key, query_columns):
-        if self.key_index[key] == 0:
-            raise Exception("Record was deleted")
+        if 0 == self.key_index[key]:
+            raise Exception("Not a valid key")
+
         collapsed = self.collapse_row(key, query_columns)
         entry = {
             'columns': collapsed
@@ -334,9 +334,9 @@ class Table:
         return resp
 
     def delete_record(self, key):
-        try:
-            base_rid = self.key_index[key]
-        except KeyError:
+        base_rid = self.key_index[key]
+        
+        if 0 == base_rid:
             raise Exception("Not a valid key")
 
         base_record = self.page_directory[base_rid]  # type: RecordPids
@@ -367,7 +367,6 @@ class Table:
         base_rid_page.writeToCell(int_to_bytes(0),base_rid_cell_inx)
         self.page_directory[new_tail_rid] = 0
         self.key_index[key] = 0
-        print("RecordPids deleted")
         return True
 
 
