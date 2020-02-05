@@ -146,7 +146,6 @@ class Table:
         # Schema Encoding
         schema_encoding = 0b0000
         bytes_to_write = int_to_bytes(schema_encoding)
-        print('write insert', key, schema_pid, bytes_to_write)
         schema_page.write(bytes_to_write)
 
         # User Data
@@ -154,8 +153,6 @@ class Table:
             col_pid, col_page = col_pid_and_page
             bytes_to_write = int_to_bytes(columns_data[i])
             col_page.write(bytes_to_write)
-
-        print('schema read insert', schema_pid, self.read_pid(schema_pid))
 
         sys_cols = [indirection_pid, rid_pid, time_pid, schema_pid]
         data_cols = [pid for pid, _ in column_pids_and_pages]
@@ -242,8 +239,6 @@ class Table:
         schema_cell_idx = num_records_in_page - 1
         schema_pid[0] = schema_cell_idx
 
-        print('schema update', self.read_pid(schema_pid))
-
         meta_columns = [indirection_pid, rid_pid, time_pid, schema_pid]
 
         # Data Columns
@@ -274,9 +269,6 @@ class Table:
 
         base_schema_enc_bytes = base_enc_page.read(base_enc_cell_idx)
 
-        print('base_schema_enc_bytes', base_rid, base_schema_enc_bytes)
-        print('func', key, update_data)
-
         schema_enc_str = parse_schema_enc_from_bytes(base_schema_enc_bytes)[0:self.num_columns]
 
         base_schema_enc = int(schema_enc_str, 2)
@@ -290,7 +282,6 @@ class Table:
             mask = mask << 1
 
         bytes_to_write = bytes(list_schema_enc)
-        print('write update', key, bytes_to_write)
         base_enc_page.writeToCell(bytes_to_write, base_enc_cell_idx)
         return True
 
@@ -368,9 +359,7 @@ class Table:
         new_tail_rid = int_from_bytes(new_tail_rid)
 
 
-        while True:
-            print(new_tail_rid, "death")
-            new_tail_record = self.page_directory[new_tail_rid]
+        while True:            new_tail_record = self.page_directory[new_tail_rid]
             new_tail_rid_page = self.get_page(new_tail_record.columns[RID_COLUMN]) # type: Page
             new_tail_rid_cell_inx,_,_ = new_tail_record.columns[RID_COLUMN]
 
