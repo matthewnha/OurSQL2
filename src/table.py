@@ -49,6 +49,14 @@ class Table:
 
         return page
 
+    def read_pid(self, pid): # type: Page
+        cell_idx, page_idx, page_range_idx = pid
+        page_range = self.page_ranges[page_range_idx] # type: PageRange
+        page = page_range.get_page(page_idx) # type: Page
+        read = page.read(cell_idx)
+
+        return read
+
     def get_open_base_page(self, col_idx):
         # how many pages for this column exists
         num_col_pages = ceil(self.num_rows / CELLS_PER_PAGE)
@@ -169,44 +177,53 @@ class Table:
         base_enc_page = self.get_page(base_enc_page_pid) # type: Page
         base_enc_cell_idx,_,_ = base_enc_page_pid
 
-        self.prev_rid += 1
-        new_rid = self.prev_rid
-
         # Meta columns
 
         # Get tail pages for meta info
         _,_,page_range_idx = base_record.columns[INDIRECTION_COLUMN]
         page_range = self.page_ranges[page_range_idx] # type: PageRange
-        indirection_pid, indirection_page = page_range.get_open_tail_page()
+        ind_inner_idx, indirection_page = page_range.get_open_tail_page()
+        indirection_pid = [None, ind_inner_idx, page_range_idx]
 
         _,_,page_range_idx = base_record.columns[RID_COLUMN]
         page_range = self.page_ranges[page_range_idx] # type: PageRange
-        rid_pid, rid_page = page_range.get_open_tail_page()
+        rid_inner_idx, rid_page = page_range.get_open_tail_page()
+        rid_pid = [None, rid_inner_idx, page_range_idx]
 
         _,_,page_range_idx = base_record.columns[TIMESTAMP_COLUMN]
         page_range = self.page_ranges[page_range_idx] # type: PageRange
-        time_pid, time_page = page_range.get_open_tail_page()
+        time_inner_idx, time_page = page_range.get_open_tail_page()
+        time_pid = [None, time_inner_idx, page_range_idx]
 
         _,_,page_range_idx = base_record.columns[SCHEMA_ENCODING_COLUMN]
         page_range = self.page_ranges[page_range_idx] # type: PageRange
-        schema_pid, schema_page = page_range.get_open_tail_page()
+        schema_inner_idx, schema_page = page_range.get_open_tail_page()
+        schema_pid = [None, schema_inner_idx, page_range_idx]
+
+        # Indirection
+        num_records_in_page = indirection_page.write(prev_update_rid_bytes)
+        ind_cell_idx = num_records_in_page - 1
+        indirection_pid[0] = ind_cell_idx
 
         # RID
         self.prev_rid += 1
-        rid = self.prev_rid
-        rid_in_bytes = int_to_bytes(rid)
+        new_rid = self.prev_rid
+        rid_in_bytes = int_to_bytes(new_rid)
         num_records_in_page = rid_page.write(rid_in_bytes)
-
-        # Indirection
-        indirection_page.write(prev_update_rid_bytes)
+        rid_cell_idx = num_records_in_page - 1
+        rid_pid[0] = rid_cell_idx
 
         # Timestamp todo: all timestamps
         bytes_to_write = b'\x00'
-        time_page.write(bytes_to_write)
+        num_records_in_page = time_page.write(bytes_to_write)
+        time_cell_idx = num_records_in_page - 1
+        time_pid[0] = time_cell_idx
 
         # Schema Encoding
         bytes_to_write = bytes(schema_encoding)
-        schema_page.write(bytes_to_write)
+        num_records_in_page = schema_page.write(bytes_to_write)
+        schema_cell_idx = num_records_in_page - 1
+        schema_pid[0] = schema_cell_idx
 
         meta_columns = [indirection_pid, rid_pid, time_pid, schema_pid]
 
@@ -232,9 +249,10 @@ class Table:
             data_columns.append(pid)
 
         tail_record = Record(new_rid, key, meta_columns + data_columns)
+        self.page_directory[new_rid] = tail_record
 
         # Update base record indirection and schema
-        new_rid_bytes = int_to_bytes(rid)
+        new_rid_bytes = int_to_bytes(new_rid)
         base_indir_page.writeToCell(new_rid_bytes, base_indir_cell_idx)
 
         base_schema_enc_bytes = base_enc_page.read(base_enc_cell_idx)
@@ -257,18 +275,62 @@ class Table:
 
     def select(self, key, query_columns):
         # todo: traverse tail records
+        return self.collapse_row(key, query_columns)
+
+        # rid = self.key_index[key]
+        # record = self.page_directory[rid]
+        # resp = []
+
+        # for i, pid in enumerate(record.columns[START_USER_DATA_COLUMN:]):
+        #     if query_columns[i] == 0:
+        #         continue
+        #     page = self.get_page(pid)
+        #     data = page.read(pid[0])
+        #     resp.append(int_from_bytes(data))
+
+        # return resp
+
+    def collapse_row(self, key, query_columns):
+        resp = [None for _ in query_columns]
         rid = self.key_index[key]
-        record = self.page_directory[rid]
-        
+        need = query_columns.copy()
 
-        resp = []
+        base_record = self.page_directory[rid] # type: Record
+        base_enc_pid = base_record.columns[SCHEMA_ENCODING_COLUMN]
+        base_enc_bytes = self.read_pid(base_enc_pid)
+        base_enc = parse_schema_enc_from_bytes(base_enc_bytes)[0:self.num_columns]
+        base_enc = [int(x) for x in base_enc]
 
-        for i, pid in enumerate(record.columns[START_USER_DATA_COLUMN:]):
-            if query_columns[i] == 0:
+        for data_col_idx, is_dirty in enumerate(base_enc):
+            if is_dirty == 1 or need[data_col_idx] == 0:
                 continue
-            page = self.get_page(pid)
-            data = page.read(pid[0])
-            resp.append(int_from_bytes(data))
+            col_pid = base_record.columns[START_USER_DATA_COLUMN + data_col_idx]
+            data = self.read_pid(col_pid)
+            resp[data_col_idx] = int_from_bytes(data)
+            need[data_col_idx] = 0
+
+        curr_record = base_record
+
+        while sum(need) != 0:
+            curr_indir_pid = curr_record.columns[INDIRECTION_COLUMN]
+            next_rid = self.read_pid(curr_indir_pid)
+            next_rid = int_from_bytes(next_rid)
+            curr_record = self.page_directory[next_rid]
+
+            curr_enc_pid = curr_record.columns[SCHEMA_ENCODING_COLUMN]
+            curr_enc_bytes = self.read_pid(curr_enc_pid)
+            curr_enc = parse_schema_enc_from_bytes(curr_enc_bytes)[0:self.num_columns]
+            curr_enc = [int(x) for x in curr_enc]
+
+            for data_col_idx, is_updated in enumerate(curr_enc):
+                if is_updated == 0 or need[data_col_idx] == 0:
+                    continue
+                col_pid = curr_record.columns[START_USER_DATA_COLUMN + data_col_idx]
+
+                data = self.read_pid(col_pid)
+                data = int_from_bytes(data)
+                resp[data_col_idx] = data
+                need[data_col_idx] = 0
 
         return resp
 
