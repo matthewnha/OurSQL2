@@ -7,7 +7,7 @@ from random import choice, randint, sample, seed
 
 db = Database()
 
-grades_table = db.create_table('Grades', 5, 0)
+grades_table = db.create_table('Grades', 0, 5)
 query = Query(grades_table)
 
 # inserted = []
