@@ -117,6 +117,11 @@ class Table:
         return (pid, page)
 
     def create_row(self, columns_data):
+        key = columns_data[self.key_col]
+
+        if key in self.key_index:
+            raise Exception('Key already exists')
+
 
         # ORDER OF THESE LINES MATTER
         indirection_pid, indirection_page = self.get_open_base_page(INDIRECTION_COLUMN)
@@ -148,8 +153,7 @@ class Table:
             col_pid, col_page = col_pid_and_page
             bytes_to_write = int_to_bytes(columns_data[i])
             col_page.write(bytes_to_write)
-        
-        key = columns_data[self.key_col]
+
         sys_cols = [indirection_pid, rid_pid, time_pid, schema_pid]
         data_cols = [pid for pid, _ in column_pids_and_pages]
         record = Record(rid, key, sys_cols + data_cols)
@@ -333,25 +337,60 @@ class Table:
             raise Exception("Not a valid key")
 
         base_record = self.page_directory[base_rid]  # type: Record
-        
+        base_rid_page = self.get_page(base_record.columns[RID_COLUMN])
+        base_rid_cell_inx,_,_ = base_record.columns[RID_COLUMN]
+
+        base_indir_page_pid = base_record.columns[INDIRECTION_COLUMN]
+        new_tail_rid = self.read(base_indir_page_pid)
+
+        while True:
+
+            new_tail_record = self.page_directory[new_tail_rid]
+            new_tail_rid_page = self.get_page(new_tail_record.columns[RID_COLUMN]) # type: Page
+            new_tail_rid_cell_inx,_,_ = new_tail_record.columns[RID_COLUMN]
+
+            new_tail_rid_page.writeToCell(0,new_tail_rid_cell_inx)
+            self.page_directory[new_tail_rid] = 0
+
+            if(base_rid == new_tail_rid):
+                break
+            else:
+                new_tail_indir_page_pid = new_tail_record.columns[INDIRECTION_COLUMN]
+                new_tail_rid = self.read(new_tail_indir_page_pid)
+
+
+        base_rid_page.write(0,base_rid_cell_inx)
+        self.page_directory[new_tail_rid] = 0
+        self.key_index[key] = 0
 
         print("Record deleted")
         return True
 
 
-    # def sum_records(self, start_range, end_range, aggregate_column_index):
-    #     col_idx = aggregate_column_index + START_USER_DATA_COLUMN
-    #     query_columns = [0]*self.num_columns
-    #     query_columns [aggregate_column_index] = 1
-
+    # # def sum_records(self, start_range, end_range, aggregate_column_index):
+    # #     col_idx = aggregate_column_index + START_USER_DATA_COLUMN
+    # #     query_columns = [0]*self.num_columns
+    # #     query_columns [aggregate_column_index] = 1
+    #
+    # #     sum = 0
+    # #     start_rid = self.key_index[start_range]
+    # #     end_rid = self.key[end_range]
+    #
+    # #     for i in range(start_idx,end_idx):
     #     sum = 0
-    #     start_rid = self.key_index[start_range]
-    #     end_rid = self.key[end_range]
-
-    #     for i in range(start_idx,end_idx):
-
-
-        
+    #
+    #     curr_rid = self.key_index[start_range]
+    #     curr_key = start_range
+    #
+    #     for i in range(0,(start_range-end_range)):
+    #         curr_rid = self.key_index[curr_key]
+    #         if curr_rid == 0:
+    #             continue
+    #         sum += self.collapse_row(start_range,query_columns)
+    #         curr_key += 1
+    #
+    #     return sum
+    #
 
 
 
