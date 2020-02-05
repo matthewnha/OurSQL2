@@ -10,33 +10,40 @@ from page import Page
 class PageRange:
 
     def __init__(self):
-        self.pages = [None for _ in range(PageRangeMaxSize)]
-        self.basePageCount = 0
-        self.tailPageCount = 0
+        self.pages = [None for _ in range(PAGE_RANGE_MAX_SIZE)]
+        self.base_page_count = 0
+        self.tail_page_count = 0
 
-    def createBasePage(self):
-        if self.basePageCount >= PageRangeMaxBasePages:
+    def has_open_base_pages(self):
+        return self.base_page_count < PAGE_RANGE_MAX_BASE_PAGES
+
+    def create_base_page(self):
+        '''
+            Creates base page and returns (page index, page instance)
+        '''
+
+        if self.base_page_count >= PAGE_RANGE_MAX_BASE_PAGES:
             return None
 
-        pageIndex = self.basePageCount
-        newPage = Page()
-        self.pages[pageIndex] = newPage
+        page_index = self.base_page_count
+        new_page = Page()
+        self.pages[page_index] = new_page
 
-        self.basePageCount += 1
+        self.base_page_count += 1
 
-        return (pageIndex, newPage)
+        return (page_index, new_page)
 
-    def createTailPage(self):
-        if self.basePageCount >= PageRangeMaxBasePages:
+    def create_tail_page(self):
+        if self.base_page_count >= PAGE_RANGE_MAX_BASE_PAGES:
             return None
 
-        pageIndex = self.tailPageCount
-        newPage = Page()
-        self.pages[pageIndex] = newPage
+        page_index = self.tail_page_count
+        new_page = Page()
+        self.pages[page_index] = new_page
 
-        self.tailPageCount += 1
+        self.tail_page_count += 1
 
-        return (pageIndex, newPage)
+        return (page_index, new_page)
 
-    def getPage(self, pageIndex):
-        return self.pages[pageIndex]
+    def get_page(self, page_index):
+        return self.pages[page_index]

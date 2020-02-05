@@ -5,10 +5,10 @@ class Page:
     def __init__(self):
         self.num_records = 0
         self.data = bytearray(4096)
-        self.cellSize = round(4096 / CellsPerPage)
+        self.cellSize = round(4096 / CELLS_PER_PAGE)
 
     def has_capacity(self):
-        return self.num_records < CellsPerPage
+        return self.num_records < CELLS_PER_PAGE
 
     def get_num_records(self):
         return self.num_records
@@ -17,7 +17,7 @@ class Page:
         '''
             Writes bytes to the page
 
-            value: Must be bytes of the specified CellsPerPage size
+            value: Must be bytes of the specified CELLS_PER_PAGE size
         '''
 
         if not self.has_capacity():
@@ -30,12 +30,26 @@ class Page:
         self.num_records += 1
         return self.num_records
 
+    def writeToCell(self, value, cell_idx):
+        '''
+            Writes bytes to the page at specific cell
+            Only write to cells that you KNOW have been written to!
+
+            value: Must be bytes of the specified CELLS_PER_PAGE size
+        '''
+
+        start = cell_idx * self.cellSize
+        end = start + self.cellSize
+        self.data[start:end] = value
+
+        return self.num_records
+
     def read(self, cellIndex):
         '''
             Reads bytes from page, returning a bytearray
         '''
 
-        if cellIndex > CellsPerPage - 1:
+        if cellIndex > CELLS_PER_PAGE - 1:
             raise Exception('cellIndex exceeds page size')
 
         start = cellIndex * self.cellSize

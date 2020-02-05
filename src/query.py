@@ -30,14 +30,9 @@ class Query:
 
     def insert(self, *columns):
         if len(columns) > self.table.num_columns:
-            raise Exception('More arguments than columns'
-        )
-        keyCol = self.table.key
-
-        data = columns[1:keyCol]
-        if keyCol < self.table.num_columns - 1:
-            data += columns[keyCol+1:]
-        ok = self.table.createRow(columns[keyCol], data)
+            raise Exception('More arguments than columns')
+        
+        ok = self.table.create_row(columns)
 
         return ok
 

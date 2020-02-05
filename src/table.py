@@ -3,7 +3,7 @@ from pagerange import PageRange
 from index import Index
 from time import time
 from config import *
-from math import ceil
+from math import ceil, floor
 from util import *
 
 INDIRECTION_COLUMN = 0
@@ -16,7 +16,7 @@ class Record:
 
     def __init__(self, rid, key, columns):
         self.rid = rid
-        self.key = key
+        self.key_col= key
         self.columns = columns
 
 class Table:
@@ -26,49 +26,100 @@ class Table:
     :param num_columns: int     #Number of Columns: all columns are integer
     :param key: int             #Index of table key in columns
     """
-    def __init__(self, name, num_columns, key):
+    def __init__(self, name, num_columns, key_col):
         self.name = name
-        self.key = key
+        self.key_col = key_col
         self.num_columns = num_columns
+        self.num_sys_columns = 4
+        self.num_total_cols = self.num_sys_columns + self.num_columns
+        self.num_rows = 0
+
         self.page_ranges = []
         self.page_directory = {}
         self.key_index = {} # key -> base record PID
         self.index = Index(self)
-        self.num_rows = 0
-        self.last_rid = -1
+
+        self.prev_rid = -1
         pass
 
-    def createRow(self, key, columns_data):
-        schema_encoding = [0 for _ in range(self.num_columns)]
+    def get_page(self, pid): # type: Page
+        cell_idx, page_idx, page_range_idx = pid
+        page_range = self.page_ranges[page_range_idx] # type: PageRange
+        page = page_range.get_page(page_idx) # type: Page
 
-        num_page_ranges = ceil(self.num_rows / CellsPerPage)
-        num_pages_in_last = self.num_rows % CellsPerPage
+        return page
 
-        if num_pages_in_last == 0:
-            new_page_range = PageRange()
-            self.page_ranges.append(new_page_range)
+    def get_open_base_page(self, col_idx):
+        # how many pages for this column exists
+        num_col_pages = ceil(self.num_rows / CELLS_PER_PAGE)
 
-            # Order of createBasePages are strict!
-            indirection_page = new_page_range.createBasePage()[1]
-            rid_page = new_page_range.createBasePage()[1]
-            time_page = new_page_range.createBasePage()[1]
-            schema_page = new_page_range.createBasePage()[1]
+        # index of the last used page in respect to all pages across all page ranges
+        prev_outer_page_idx = col_idx + max(0, num_col_pages - 1) * self.num_total_cols
 
-            key_page = new_page_range.createBasePage()[1]
-            column_pages = [new_page_range.createBasePage()[1] for _ in range(self.num_columns - 1)]
+        # index of last used page range
+        prev_page_range_idx = floor(prev_outer_page_idx / PAGE_RANGE_MAX_BASE_PAGES)
+
+        # index of last used page in respect to the specific page range
+        prev_inner_page_idx = get_inner_index_from_outer_index(prev_outer_page_idx, PAGE_RANGE_MAX_BASE_PAGES)
+
+        # index of cell within page
+        mod = self.num_rows % CELLS_PER_PAGE
+        max_cell_index = CELLS_PER_PAGE - 1
+        prev_cell_idx = max_cell_index if (0 == mod) else (mod - 1)
+
+        if max_cell_index == prev_cell_idx: # last page was full
+            # Go to next col page
+
+            # New cell's page index in respect to all pages
+            outer_page_idx = col_idx if 0 == self.num_rows else prev_outer_page_idx + self.num_total_cols
+
+            # New cell's page range index
+            page_range_idx = floor(outer_page_idx / PAGE_RANGE_MAX_BASE_PAGES)
             
-        else: # last page range has space
-            page_range = self.page_ranges[num_page_ranges - 1] # type: PageRange # last page range 
-            indirection_page = page_range.getPage(INDIRECTION_COLUMN)
-            rid_page = page_range.getPage(RID_COLUMN)
-            time_page = page_range.getPage(TIMESTAMP_COLUMN)
-            schema_page = page_range.getPage(SCHEMA_ENCODING_COLUMN)
-            key_page = page_range.getPage(START_USER_DATA_COLUMN)
-            column_pages = [page_range.getPage(START_USER_DATA_COLUMN+i) for i in range(self.num_columns - 1)]
+            try:
+                page_range = self.page_ranges[page_range_idx] # type: PageRange
+            except IndexError:
+                page_range = PageRange()
+                self.page_ranges.append(page_range)
+
+            # New cell's page index in respect to pages in page range
+            inner_page_idx = get_inner_index_from_outer_index(outer_page_idx, PAGE_RANGE_MAX_BASE_PAGES)
+
+            cell_idx = 0
+            created_inner_page_idx, page = page_range.create_base_page()
+
+            if created_inner_page_idx != inner_page_idx:
+                raise Exception('Created inner page index is not the same as the expected inner page index',
+                    page.get_num_records(),
+                    created_inner_page_idx, cell_idx, inner_page_idx, page_range_idx, outer_page_idx)
+
+        else: # there's space in the last used page
+            outer_page_idx = prev_outer_page_idx
+            page_range_idx = prev_page_range_idx
+            inner_page_idx = prev_inner_page_idx
+            cell_idx = prev_cell_idx + 1
+            
+            page_range = self.page_ranges[page_range_idx] # type: PageRange
+
+            page = page_range.get_page(inner_page_idx)
+            if (None == page):
+                raise Exception('No page returned', cell_idx, inner_page_idx, page_range_idx, outer_page_idx, self.num_rows, col_idx)
+            
+        pid = [cell_idx, inner_page_idx, page_range_idx]  
+        return (pid, page)
+
+    def create_row(self, columns_data):
+
+        # ORDER OF THESE LINES MATTER
+        indirection_pid, indirection_page = self.get_open_base_page(INDIRECTION_COLUMN)
+        rid_pid, rid_page = self.get_open_base_page(RID_COLUMN)
+        time_pid, time_page = self.get_open_base_page(TIMESTAMP_COLUMN)
+        schema_pid, schema_page = self.get_open_base_page(SCHEMA_ENCODING_COLUMN)
+        column_pids_and_pages = [self.get_open_base_page(START_USER_DATA_COLUMN + i) for i in range(self.num_columns)]
 
         # RID
-        self.last_rid += 1
-        rid = self.last_rid
+        self.prev_rid += 1
+        rid = self.prev_rid
         rid_in_bytes = int_to_bytes(rid)
         num_records_in_page = rid_page.write(rid_in_bytes)
 
@@ -80,44 +131,65 @@ class Table:
         time_page.write(bytes_to_write)
 
         # Schema Encoding
+        schema_encoding = [0 for _ in range(self.num_columns)]
         bytes_to_write = bytes(schema_encoding)
         schema_page.write(bytes_to_write)
 
-        # Key
-        bytes_to_write = int_to_bytes(key)
-        key_page.write(bytes_to_write)
-
         # User Data
-        for i in range(len(column_pages)):
-            column_page = column_pages[i]
+        for i, col_pid_and_page in enumerate(column_pids_and_pages):
+            col_pid, col_page = col_pid_and_page
             bytes_to_write = int_to_bytes(columns_data[i])
-            column_page.write(bytes_to_write)
+            col_page.write(bytes_to_write)
         
-        self.num_rows += 1
-        page_range_idx = ceil(self.num_rows / CellsPerPage) - 1
-        page_idx = self.num_rows % CellsPerPage - 1
-        cell_idx = num_records_in_page - 1
-
-        self.page_directory[rid] = (cell_idx, page_idx, page_range_idx)
+        key = columns_data[self.key_col]
+        sys_cols = [indirection_pid, rid_pid, time_pid, schema_pid]
+        data_cols = [pid for pid, _ in column_pids_and_pages]
+        record = Record(rid, key, sys_cols + data_cols)
+        self.page_directory[rid] = record
         self.key_index[key] = rid
+        self.num_rows += 1
 
-    def select(self, key, query_columns):
-        rid = self.key_index[key]
-        pid = self.page_directory[rid]
-        cell_idx, page_idx, page_range_idx = pid
+    def update_row(self, key, columns_data):
+         # todo: traverse tail records
+        base_rid = self.key_index[key]
+        base_record = self.page_directory[base_rid] # type: Record
+        schema_encoding = [0 if new_col_val == None else 1 for new_col_val in columns_data]
 
-        page_range = self.page_ranges[page_range_idx] # type: PageRange
+        # Get base record indirection
+        indir_page_pid = base_record.columns[INDIRECTION_COLUMN]
+        indir_page = self.get_page(indir_page_pid)
 
-        resp = []
+        # Base record encoding
+        enc_page_pid = base_record.columns[SCHEMA_ENCODING_COLUMN]
+        enc_page = self.get_page(enc_page_pid)
 
-        for i, do_query in enumerate(query_columns):
-            if (do_query):
-                page = page_range.getPage(START_USER_DATA_COLUMN + i) # type: Page
-                data = page.read(cell_idx)
-                resp.append(int_from_bytes(data))
+        for i, pid in enumerate(record.columns[START_USER_DATA_COLUMN:]):
+            if query_columns[i] == 0:
+                continue
+            cell_idx, page_idx, page_range_idx = pid
+            page_range = self.page_ranges[page_range_idx] # type: PageRange
+            page = page_range.get_page(page_idx) # type: Page
+            data = page.read(cell_idx)
+            resp.append(int_from_bytes(data))
 
         return resp
 
+    def select(self, key, query_columns):
+        # todo: traverse tail records
+        rid = self.key_index[key]
+        record = self.page_directory[rid]
+        
+
+        resp = []
+
+        for i, pid in enumerate(record.columns[START_USER_DATA_COLUMN:]):
+            if query_columns[i] == 0:
+                continue
+            page = self.get_page(pid)
+            data = page.read(pid[0])
+            resp.append(int_from_bytes(data))
+
+        return resp
 
     def __merge(self):
         pass

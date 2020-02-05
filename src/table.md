@@ -24,7 +24,7 @@ Table:
     pageRange = pageAddress[0]
     pageInRange = pageAddress[1]
     cellInPage = pageAddress[2]
-    page = PageRanges[pageRange].getPage(pageInRange)
+    page = PageRanges[pageRange].get_page(pageInRange)
     page.getCell(cellInRange) # this will be some byte memory shit
   }
 
