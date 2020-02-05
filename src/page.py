@@ -4,6 +4,7 @@ class Page:
     def __init__(self):
         self.num_records = 0
         self.data = bytearray(4096)
+        self.space_left = 4096
         self.cellSize = 4096 // CELLS_PER_PAGE
 
     def has_capacity(self):
@@ -23,7 +24,12 @@ class Page:
 
         start = self.num_records * self.cellSize
         end = start + self.cellSize
+        print("writing these bytes",value, "from", start, "to", end)
+        print(self.space_left,"compared to",len(value))
+        self.space_left -= len(value) + abs(self.cellSize - len(value))
+        
         self.data[start:end] = value
+        print("finished writing these bytes",bytes(self.data[start:end]),"from", start, "to", end, "should be eqaul to", value)
         self.num_records += 1
         return self.num_records
 
