@@ -256,7 +256,8 @@ class Table:
         base_indir_page.writeToCell(new_rid_bytes, base_indir_cell_idx)
 
         base_schema_enc_bytes = base_enc_page.read(base_enc_cell_idx)
-        schema_enc_str = parse_schema_enc_from_bytes(base_schema_enc_bytes)
+        schema_enc_str = parse_schema_enc_from_bytes(base_schema_enc_bytes)[0:self.num_columns]
+
         base_schema_enc = int(schema_enc_str, 2)
         tail_schema_enc = int("".join(str(x) for x in schema_encoding), 2)
         new_base_enc = int(bin(base_schema_enc | tail_schema_enc), 2)
@@ -274,21 +275,7 @@ class Table:
         return True
 
     def select(self, key, query_columns):
-        # todo: traverse tail records
         return self.collapse_row(key, query_columns)
-
-        # rid = self.key_index[key]
-        # record = self.page_directory[rid]
-        # resp = []
-
-        # for i, pid in enumerate(record.columns[START_USER_DATA_COLUMN:]):
-        #     if query_columns[i] == 0:
-        #         continue
-        #     page = self.get_page(pid)
-        #     data = page.read(pid[0])
-        #     resp.append(int_from_bytes(data))
-
-        # return resp
 
     def collapse_row(self, key, query_columns):
         resp = [None for _ in query_columns]
