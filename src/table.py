@@ -325,7 +325,12 @@ class Table:
         return resp
 
     def delete(self, key):
-        base_rid = self.key_index[key]
+        try:
+            base_rid = self.key_index[key]
+        except KeyError:
+            print("Not a valid key")
+            return False
+
         base_record = self.page_directory[base_rid]  # type: Record
         base_rid_page = self.get_page(base_record.columns[RID_COLUMN])
         base_rid_cell_inx,_,_ = base_record.columns[RID_COLUMN]
@@ -348,14 +353,17 @@ class Table:
                 new_tail_indir_page_pid = new_tail_record.columns[INDIRECTION_COLUMN]
                 new_tail_rid = self.read(new_tail_indir_page_pid)
 
-            
+
         base_rid_page.write(0,base_rid_cell_inx)
         del self.page_directory[new_tail_rid]
         del self.key_index[key]
 
+        print("Record deleted")
+        return True
 
 
 
+    def select(self,key):
 
         
 
