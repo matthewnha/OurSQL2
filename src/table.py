@@ -208,7 +208,6 @@ class Table:
         num_records_in_page = indirection_page.write(prev_update_rid_bytes)
         ind_cell_idx = num_records_in_page - 1
         indirection_pid[0] = ind_cell_idx
-        print(indirection_pid, "tail ",base_indir_page_pid,"base")
 
 
         # RID
@@ -281,6 +280,8 @@ class Table:
         return True
 
     def select(self, key, query_columns):
+        if self.key_index[key] == 0:
+            raise Exception("Record was deleted")
         collapsed = self.collapse_row(key, query_columns)
         entry = {
             'columns': collapsed
@@ -360,7 +361,6 @@ class Table:
 
             new_tail_rid_page.writeToCell(int_to_bytes(0),new_tail_rid_cell_inx)
             self.page_directory[new_tail_rid] = 0
-
             if(base_rid == new_tail_rid):
                 break
             else:
