@@ -23,7 +23,6 @@ if fetched != row:
 else:
     print('Matched', fetched, row)
 
-for
 
 query.insert(9399395, 5, 6, 7, 8)
 query.update(9399395, [None, 99, 88, None, None])
@@ -32,7 +31,7 @@ query.update(9399395, [None, None, None, None, 200])
 query.update(9399395, [1, None, None, None, None])
 print(query.select(9399395,[1,1,1,1,1]))
 query.delete(9399395)
-print(query.select(9399395,[1,1,1,1,1]))
+#print(query.select(9399395,[1,1,1,1,1]))
 print(query.sum(947032,947111,3))
 # print(query.select(9399395, [1,1,1,1,1])[0])
 
