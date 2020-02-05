@@ -318,14 +318,13 @@ class Table:
             curr_enc_bytes = self.read_pid(curr_enc_pid)
             curr_enc = int_from_bytes(curr_enc_bytes)
             curr_enc_binary = bin(curr_enc)[2:].zfill(self.num_columns)
-            print(next_rid, "next", curr_enc_pid, "schema", curr_enc_binary, "order")
+            #print(next_rid, "next", curr_enc_pid, "schema", curr_enc_binary, "order")
 
             for data_col_idx, is_updated in enumerate(curr_enc_binary):
-                print("still needs",need,"curr schema",curr_enc_binary,"dex", data_col_idx, "at", is_updated)
+               # print("still needs",need,"curr schema",curr_enc_binary,"dex", data_col_idx, "at", is_updated)
                 if is_updated == '0' or need[data_col_idx] == 0:
                     continue
                 col_pid = curr_record.columns[START_USER_DATA_COLUMN + data_col_idx]
-
                 data = self.read_pid(col_pid)
                 data = int_from_bytes(data)
                 resp[data_col_idx] = data
@@ -375,7 +374,7 @@ class Table:
 
 
     def sum_records(self, start_range, end_range, aggregate_column_index):
-        col_idx = aggregate_column_index + START_USER_DATA_COLUMN
+        #col_idx = aggregate_column_index + START_USER_DATA_COLUMN
         query_columns = [0]*self.num_columns
         query_columns [aggregate_column_index] = 1
 
@@ -384,12 +383,14 @@ class Table:
         curr_rid = self.key_index[start_range]
         curr_key = start_range
 
-        for i in range(0,(start_range-end_range)):
+        while curr_key != (end_range+1):
+            print(curr_key)
             curr_rid = self.key_index[curr_key]
             if curr_rid == 0:
                 continue
-
-            sum += self.collapse_row(start_range,query_columns)
+            value = self.collapse_row(curr_key,query_columns)[aggregate_column_index]
+            print(value)
+            sum += value
             curr_key += 1
 
         return sum

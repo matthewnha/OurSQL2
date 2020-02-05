@@ -22,11 +22,11 @@ class Page:
             raise Exception('page is full')
 
         start = self.num_records * self.cellSize
-        end = start + (self.cellSize - 1)
-        print("writing these bytes",value, "from", start, "to", end)
+        end = start + (self.cellSize - 1) # added the minus 1, but didn't fix it
+        #print("writing these bytes",value, "from", start, "to", end)
         # The issue is right here
         self.data[start:end] = value
-        print("finished writing these bytes",bytes(self.data[start:end]),"from", start, "to", end, "should be eqaul to", value)
+        #print("finished writing these bytes",bytes(self.data[start:end]),"from", start, "to", end, "should be eqaul to", value)
         self.num_records += 1
         return self.num_records
 
