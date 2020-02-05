@@ -4,6 +4,7 @@ def parse_schema_enc_from_bytes(bytes):
   '''
     Takes bytes of schema encoding and converts it to a string 
   '''
+
   ret_enc = ''
   for byte in bytes:
       ret_enc += '' + str(byte)

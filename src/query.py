@@ -73,8 +73,7 @@ class Query:
     """
 
     def update(self, key, *columns):
-
-        pass
+        return self.table.update_row(key, columns[0])
 
     """
     :param start_range: int         # Start of the key range to aggregate 

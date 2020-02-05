@@ -39,7 +39,7 @@ class Table:
         self.key_index = {} # key -> base record PID
         self.index = Index(self)
 
-        self.prev_rid = -1
+        self.prev_rid = 0
         pass
 
     def get_page(self, pid): # type: Page
@@ -133,6 +133,7 @@ class Table:
         # Schema Encoding
         schema_encoding = [0 for _ in range(self.num_columns)]
         bytes_to_write = bytes(schema_encoding)
+        print('bytes_to_write', bytes_to_write)
         schema_page.write(bytes_to_write)
 
         # User Data
@@ -149,30 +150,119 @@ class Table:
         self.key_index[key] = rid
         self.num_rows += 1
 
-    def update_row(self, key, columns_data):
+    def update_row(self, key, update_data):
          # todo: traverse tail records
         base_rid = self.key_index[key]
         base_record = self.page_directory[base_rid] # type: Record
-        schema_encoding = [0 if new_col_val == None else 1 for new_col_val in columns_data]
+        schema_encoding = [0 if new_col_val == None else 1 for new_col_val in update_data]
+
+        if 0 == sum(schema_encoding):
+            return False
 
         # Get base record indirection
-        indir_page_pid = base_record.columns[INDIRECTION_COLUMN]
-        indir_page = self.get_page(indir_page_pid)
+        base_indir_page_pid = base_record.columns[INDIRECTION_COLUMN]
+        base_indir_page = self.get_page(base_indir_page_pid) # type: Page
+        base_indir_cell_idx,_,_ = base_indir_page_pid
+        prev_update_rid_bytes = base_indir_page.read(base_indir_cell_idx)
 
         # Base record encoding
-        enc_page_pid = base_record.columns[SCHEMA_ENCODING_COLUMN]
-        enc_page = self.get_page(enc_page_pid)
+        base_enc_page_pid = base_record.columns[SCHEMA_ENCODING_COLUMN]
+        base_enc_page = self.get_page(base_enc_page_pid) # type: Page
+        base_enc_cell_idx,_,_ = base_enc_page_pid
 
-        for i, pid in enumerate(record.columns[START_USER_DATA_COLUMN:]):
-            if query_columns[i] == 0:
+        self.prev_rid += 1
+        new_rid = self.prev_rid
+
+        # Meta columns
+
+        # Get tail pages for meta info
+        _,_,page_range_idx = base_record.columns[INDIRECTION_COLUMN]
+        page_range = self.page_ranges[page_range_idx] # type: PageRange
+        indirection_pid, indirection_page = page_range.get_open_tail_page()
+
+        _,_,page_range_idx = base_record.columns[RID_COLUMN]
+        page_range = self.page_ranges[page_range_idx] # type: PageRange
+        rid_pid, rid_page = page_range.get_open_tail_page()
+
+        _,_,page_range_idx = base_record.columns[TIMESTAMP_COLUMN]
+        page_range = self.page_ranges[page_range_idx] # type: PageRange
+        time_pid, time_page = page_range.get_open_tail_page()
+
+        _,_,page_range_idx = base_record.columns[SCHEMA_ENCODING_COLUMN]
+        page_range = self.page_ranges[page_range_idx] # type: PageRange
+        schema_pid, schema_page = page_range.get_open_tail_page()
+
+        # RID
+        self.prev_rid += 1
+        rid = self.prev_rid
+        rid_in_bytes = int_to_bytes(rid)
+        num_records_in_page = rid_page.write(rid_in_bytes)
+
+        # Indirection
+        indirection_page.write(prev_update_rid_bytes)
+
+        # Timestamp todo: all timestamps
+        bytes_to_write = b'\x00'
+        time_page.write(bytes_to_write)
+
+        # Schema Encoding
+        bytes_to_write = bytes(schema_encoding)
+        schema_page.write(bytes_to_write)
+
+        meta_columns = [indirection_pid, rid_pid, time_pid, schema_pid]
+
+        # Data Columns
+        data_columns = []
+        for i, pid in enumerate(update_data):
+            if 0 == schema_encoding[i]:
+                data_columns.append(None)
                 continue
-            cell_idx, page_idx, page_range_idx = pid
-            page_range = self.page_ranges[page_range_idx] # type: PageRange
-            page = page_range.get_page(page_idx) # type: Page
-            data = page.read(cell_idx)
-            resp.append(int_from_bytes(data))
 
-        return resp
+            col_idx = START_USER_DATA_COLUMN + i
+            _,_,page_range_idx = base_record.columns[col_idx]
+            page_range = self.page_ranges[page_range_idx] # type: PageRange
+
+            # Get/make open tail page from the respective og page range
+            inner_page_idx, tail_page = page_range.get_open_tail_page()
+
+            bytes_to_write = int_to_bytes(update_data[i])
+            num_records = tail_page.write(bytes_to_write)
+            cell_idx = num_records - 1
+
+            pid = [cell_idx, inner_page_idx, page_range_idx]  
+            data_columns.append(pid)
+
+        tail_record = Record(new_rid, key, meta_columns + data_columns)
+
+        # Update base record indirection and schema
+        new_rid_bytes = int_to_bytes(rid)
+        base_indir_page.writeToCell(new_rid_bytes, base_indir_cell_idx)
+
+        base_schema_enc_bytes = base_enc_page.read(base_enc_cell_idx)
+        schema_enc_str = parse_schema_enc_from_bytes(base_schema_enc_bytes)
+        base_schema_enc = int(schema_enc_str, 2)
+        tail_schema_enc = int("".join(str(x) for x in schema_encoding), 2)
+        new_base_enc = int(bin(base_schema_enc | tail_schema_enc), 2)
+
+        list_schema_enc = []
+        mask = 0b1
+        for i in range(len(update_data)):
+            list_schema_enc.insert(0, 0 if int(bin(new_base_enc & mask), 2) == 0 else 1)
+            mask = mask << 1
+
+        read = base_enc_page.read(base_enc_cell_idx)
+        print(read)
+        bytes_to_write = bytes(list_schema_enc)
+        base_enc_page.writeToCell(bytes_to_write, base_enc_cell_idx)
+        print(bytes_to_write)
+
+        read = base_enc_page.read(base_enc_cell_idx)[0: self.num_columns]
+        print(read)
+        print(parse_schema_enc_from_bytes(read))
+
+        # print('enc', base_schema_enc, tail_schema_enc, new_base_enc_binary, new_base_enc)
+
+        return True
 
     def select(self, key, query_columns):
         # todo: traverse tail records
