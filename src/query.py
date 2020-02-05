@@ -96,7 +96,7 @@ class Query:
 
     def update(self, key, *columns):
         print(columns, "update")
-        return self.table.update_row(key, columns[0])
+        return self.table.update_row(key, columns)
 
 
     """

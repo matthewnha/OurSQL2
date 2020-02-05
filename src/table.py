@@ -166,15 +166,15 @@ class Table:
         base_rid = self.key_index[key]
         base_record = self.page_directory[base_rid] # type: RecordPids
 
-        schema_encoding = 0
+        tail_schema_encoding = 0
 
         for i,value in enumerate(update_data):
             if value is None:
-                schema_encoding += 0
+                tail_schema_encoding += 0
             else:
-                schema_encoding += 2**i
+                tail_schema_encoding += 2**i
 
-        if 0 == sum(schema_encoding):
+        if 0 == tail_schema_encoding:
             return False
 
         # Get base record indirection
@@ -234,7 +234,7 @@ class Table:
         time_pid[0] = time_cell_idx
 
         # Schema Encoding
-        bytes_to_write = bytes(schema_encoding)
+        bytes_to_write = int_to_bytes(tail_schema_encoding)
         num_records_in_page = schema_page.write(bytes_to_write)
         schema_cell_idx = num_records_in_page - 1
         schema_pid[0] = schema_cell_idx
@@ -243,8 +243,9 @@ class Table:
 
         # Data Columns
         data_columns = []
+        tail_schema_encoding_binary = bin(tail_schema_encoding)
         for i, pid in enumerate(update_data):
-            if 0 == schema_encoding[i]:
+            if '0' == tail_schema_encoding_binary[i+2]:
                 data_columns.append(None)
                 continue
 
@@ -253,6 +254,7 @@ class Table:
             page_range = self.page_ranges[page_range_idx] # type: PageRange
 
             # Get/make open tail page from the respective og page range
+            print(update_data)
             inner_page_idx, tail_page = page_range.get_open_tail_page()
             bytes_to_write = int_to_bytes(update_data[i])
             num_records = tail_page.write(bytes_to_write)
@@ -268,20 +270,10 @@ class Table:
         base_indir_page.writeToCell(new_rid_bytes, base_indir_cell_idx)
 
         base_schema_enc_bytes = base_enc_page.read(base_enc_cell_idx)
+        base_schema_enc_int = int_from_bytes(base_schema_enc_bytes)
+        new_base_enc = base_schema_enc_int | tail_schema_encoding
 
-        schema_enc_str = parse_schema_enc_from_bytes(base_schema_enc_bytes)[0:self.num_columns]
-
-        base_schema_enc = int(schema_enc_str, 2)
-        tail_schema_enc = int("".join(str(x) for x in schema_encoding), 2)
-        new_base_enc = int(bin(base_schema_enc | tail_schema_enc), 2)
-
-        list_schema_enc = []
-        mask = 0b1
-        for i in range(len(update_data)):
-            list_schema_enc.insert(0, 0 if int(bin(new_base_enc & mask), 2) == 0 else 1)
-            mask = mask << 1
-
-        bytes_to_write = bytes(list_schema_enc)
+        bytes_to_write = int_to_bytes(new_base_enc)
         base_enc_page.writeToCell(bytes_to_write, base_enc_cell_idx)
         return True
 
@@ -304,8 +296,7 @@ class Table:
         base_record = self.page_directory[rid] # type: RecordPids
         base_enc_pid = base_record.columns[SCHEMA_ENCODING_COLUMN]
         base_enc_bytes = self.read_pid(base_enc_pid)
-        base_enc = parse_schema_enc_from_bytes(base_enc_bytes)[0:self.num_columns]
-        base_enc = [int(x) for x in base_enc]
+        base_enc = bin(int_from_bytes(base_enc_bytes))
 
         for data_col_idx, is_dirty in enumerate(base_enc):
             if is_dirty == 1 or need[data_col_idx] == 0:
@@ -360,7 +351,7 @@ class Table:
         new_tail_rid = int_from_bytes(new_tail_rid)
 
 
-        while True:
+        while True:            
             new_tail_record = self.page_directory[new_tail_rid]
             new_tail_rid_page = self.get_page(new_tail_record.columns[RID_COLUMN]) # type: Page
             new_tail_rid_cell_inx,_,_ = new_tail_record.columns[RID_COLUMN]
