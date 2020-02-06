@@ -27,7 +27,7 @@ def delete_student(id):
   return query.delete(id)
 
 def get_student_grades(key, q):
-  return query.select(key, [0,1,1,1,1])
+  return query.select(key, q)
 
 
 def handle_help():
@@ -35,7 +35,14 @@ def handle_help():
   print('=================================')
   print('help: Show commands')
   print('new: Create new student and his grades')
+<<<<<<< HEAD
   print('')
+=======
+  print('grades: Print student\'s grades')
+  print('assignment: Update student\'s grade on an assignment')
+  print('delete: Delete a student\'s records')
+  print('sum: Get the sum of grades for an assignment')
+>>>>>>> cc3c500d449cade983a9ff106154685a0c312638
 
 def handle_new():
   name = input("Student name: ")
@@ -73,8 +80,11 @@ def handle_grades():
     return False
 
   query = [0] + grades
-  fetched = get_student_grades(id, query)
-  print(fetched[0].columns)
+  fetched = get_student_grades(id, query)[0].columns
+
+  for i, q in enumerate(grades):
+    if q == 1:
+      print('Assignment ' + str(i) + ':', fetched[i+1])
 
   return True
 
@@ -132,8 +142,10 @@ def main():
     
     if command == 'stop':
       break
-    print("")  
+    print("\n=============================\n")  
     switcher[command]()
-    print("")
+
+    print("Complete!")
+    print("\n=============================\n")
     
 main()
