@@ -54,10 +54,11 @@ def handle_new():
     if len(grades) != 4:
       print("Error: please enter 4 grades...")
 
+
   if len(grades) != 4:
     return False
   
-    ok = create_new_student(name, id, grades)
+  ok = create_new_student(name, id, grades)
 
   return ok
   
@@ -126,7 +127,18 @@ def handle_delete():
   pass
 
 def handle_sum():
-  pass
+  print("Summing up grades!")
+  start_sid = int(input("Enter start SID:"))
+  end_sid = int(input("Enter end SID:"))
+
+  assignment = 0
+  while 0 == assignment:
+    assignment = int(input("Assignment to sum up:"))
+    if assignment < 1 or assignment > 4:
+      print('Error: Please enter an assignment from 1-4')
+
+  sum = sum_grades(start_sid, end_sid, assignment)
+  print(sum)
 
 switcher = {
   'help': handle_help,
