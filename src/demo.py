@@ -32,7 +32,7 @@ def get_student_grades(key, q):
 
 def handle_help():
   print('Commands:')
-  print('=================================')
+  print('==')
   print('help: Show commands')
   print('new: Create new student and his grades')
   print('grades: Print student\'s grades')
