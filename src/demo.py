@@ -39,6 +39,7 @@ def handle_help():
   print('assignment: Update student\'s grade on an assignment')
   print('delete: Delete a student\'s records')
   print('sum: Get the sum of grades for an assignment')
+  print('stop: Stop program')
 
 def handle_new():
   name = input("Student name: ")
@@ -55,8 +56,8 @@ def handle_new():
 
   if len(grades) != 4:
     return False
-
-  ok = create_new_student(name, id, grades)
+  
+    ok = create_new_student(name, id, grades)
 
   return ok
   
@@ -76,7 +77,11 @@ def handle_grades():
     return False
 
   query = [0] + grades
-  fetched = get_student_grades(id, query)[0].columns
+  try:
+    fetched = get_student_grades(id, query)[0].columns
+  except Exception:
+    print("Student not found.")
+    return False
 
   for i, q in enumerate(grades):
     if q == 1:
