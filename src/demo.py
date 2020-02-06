@@ -12,7 +12,7 @@ query = Query(grades_table)
 students = dict()
 
 def create_new_student(name, student_id, *grades):
-  students[name] = student_id
+  students[student_id] = name
   return query.insert(student_id, *(grades[0]))
 
 def update_student(student_id, grade, assignment):
@@ -59,8 +59,12 @@ def handle_new():
 
   if len(grades) != 4:
     return False
-  
-  ok = create_new_student(name, id, grades)
+
+  try:
+    ok = create_new_student(name, id, grades)
+  except:
+    print("Not Valid")
+    return False
 
   return ok
   
@@ -100,7 +104,7 @@ def handle_assignment():
     while type(grade) is not int:
 
         try :
-            grade = input("Grade to change: ") 
+            grade = input("New Grade: ") 
             grade = int(grade)
         except ValueError:
             print("Not a valid grade")
@@ -148,13 +152,25 @@ def handle_sum():
 
   return True
 
+def handle_students():
+  print("{:<20}{:<15}".format("Student", "ID"))
+  print("{:<20}{:<15}".format("------", "------"))
+
+  for id in sorted(students):
+    name = students[id]
+    row = "{:<20}{:<15}".format(name, id)
+    print(row)
+
+  return True
+
 switcher = {
   'help': handle_help,
   'new': handle_new, # New user
   'grades': handle_grades, # Get grades
   'assignment': handle_assignment, # Update 1 assignment
   'delete': handle_delete, # Delete student
-  'sum': handle_sum # Sum grades
+  'sum': handle_sum, # Sum grades
+  'students' : handle_students # Gives student list
 }
 
 def main():
@@ -171,7 +187,7 @@ def main():
     try:
       func = switcher[command]
     except:
-      print("Command not valid. Type 'help' for list of commands")
+      print("Command not valid. Type 'help' for list of commands. \n")
       continue
     ok = switcher[command]()
 
@@ -181,5 +197,5 @@ def main():
       print("\nFailed :(")
     
     print("=============================\n")
-    
+
 main()
