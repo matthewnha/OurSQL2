@@ -170,6 +170,8 @@ class Table:
         self.key_index[key] = rid
         self.num_rows += 1
 
+        return True
+
     def update_row(self, key, update_data):
          # todo: traverse tail records
         base_rid = self.key_index[key]
