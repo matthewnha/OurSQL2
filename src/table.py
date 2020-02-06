@@ -374,19 +374,26 @@ class Table:
 
         sum = 0
 
-        curr_rid = self.key_index[start_range]
-        curr_key = start_range
+        if start_range <= end_range:
+            curr_key = start_range
+            end = end_range
+        else:
+            curr_key = end_range
+            end = start_range
 
-        while curr_key != (end_range+1):
-            print(curr_key)
-            curr_rid = self.key_index[curr_key]
+        while curr_key != (end+1):            
+            try:
+                curr_rid = self.key_index[curr_key]
+            except KeyError:
+                curr_key += 1
+                continue
             if curr_rid == 0:
                 continue
             value = self.collapse_row(curr_key,query_columns)[aggregate_column_index]
-            print(value)
             sum += value
             curr_key += 1
 
+        #print(sum)
         return sum
 
     def __merge(self):
