@@ -130,9 +130,23 @@ def handle_assignment():
     return updated
 
 def handle_delete():
-    deleteKey = input("Please enter Student ID to delete: ")
-    print(deleteKey + " id deleted.")
-    query.delete(int(deleteKey))
+
+    id = None 
+    while type(id) is not int:
+      try:
+        deleteKey = input("Please enter Student ID to delete: ")
+        id = int(deleteKey)
+      except ValueError:
+        print("Not a number")
+
+    try:
+      query.delete(id)
+    except:
+      print("Not a student.")
+      return False
+
+    del students[id]
+    print(id + " id deleted.")
     return True
 
 def handle_sum():
@@ -185,11 +199,11 @@ def main():
       break
     print("\n=============================\n")  
     try:
-      func = switcher[command]
+      func = switcher[command.strip()]
     except:
       print("Command not valid. Type 'help' for list of commands. \n")
       continue
-    ok = switcher[command]()
+    ok = switcher[command.strip()]()
 
     if ok:
       print("\nComplete!")
