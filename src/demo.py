@@ -140,12 +140,21 @@ def main():
     command = input("Enter command: ") 
     last_command = command
 
-    
     if command == 'stop':
       break
     print("\n=============================\n")  
-    switcher[command]()
+    try:
+      func = switcher[command]
+    except:
+      print("Command not valid. Type 'help' for list of commands")
+      continue
+    ok = switcher[command]()
 
-    print("\nComplete!\n=============================\n")
+    if ok:
+      print("\nComplete!")
+    else:
+      print("\nFailed :(")
+    
+    print("=============================\n")
     
 main()
