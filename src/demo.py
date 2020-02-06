@@ -141,7 +141,6 @@ def main():
     print("\n=============================\n")  
     switcher[command]()
 
-    print("Complete!")
-    print("\n=============================\n")
+    print("\nComplete!\n=============================\n")
     
 main()
