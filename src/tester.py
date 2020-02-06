@@ -3,7 +3,6 @@ from query import Query
 from time import process_time
 
 from random import choice, randint, sample, seed
-from colorama import Fore, Back, Style
 
 # Student Id and 4 grades
 db = Database()
@@ -30,6 +29,7 @@ for key in records:
             error = True
     if error:
         print('select error on', key , ':', record, ', correct:', records[key])
+        raise Exception("uggg")
     else:
         print('select on', key, ':', record)
 
@@ -48,6 +48,7 @@ for key in records:
                 error = True
         if error:
             print('update error on', original, 'and', updated_columns, ':', record, ', correct:', records[key])
+            raise Exception("uggg")
         else:
             print('update on', original, 'and', updated_columns, ':', record) 
         updated_columns[i] = None
@@ -60,6 +61,7 @@ for c in range(0, grades_table.num_columns):
         result = query.sum(keys[r[0]], keys[r[1]], c)
         if column_sum != result:
             print('sum error on [', keys[r[0]], ',', keys[r[1]], ']: ', result, ', correct: ', column_sum)
+            raise Exception("uggg")
         else:
             print('sum on [', keys[r[0]], ',', keys[r[1]], ']: ', column_sum)
 

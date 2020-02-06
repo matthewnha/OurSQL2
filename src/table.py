@@ -5,6 +5,7 @@ from time import time
 from config import *
 from math import ceil, floor
 from util import *
+import time
 
 INDIRECTION_COLUMN = 0
 RID_COLUMN = 1
@@ -147,8 +148,8 @@ class Table:
         indirection_page.write(rid_in_bytes)
 
         # Timestamp
-        int_to_write = 0
-        bytes_to_write = int_to_bytes(int_to_write)
+        millisec = int(round(time.time()*1000))
+        bytes_to_write = int_to_bytes(millisec)
         time_page.write(bytes_to_write)
 
         # Schema Encoding
@@ -228,7 +229,8 @@ class Table:
         time_pid = [None, time_inner_idx, page_range_idx]
 
         # write Timestamp todo: all timestamps
-        bytes_to_write = b'\x00'
+        millisec = int(round(time.time()*1000))
+        bytes_to_write = int_to_bytes(millisec)
         num_records_in_page = time_page.write(bytes_to_write)
         time_cell_idx = num_records_in_page - 1
         time_pid[0] = time_cell_idx
@@ -243,7 +245,6 @@ class Table:
         num_records_in_page = schema_page.write(bytes_to_write)
         schema_cell_idx = num_records_in_page - 1
         schema_pid[0] = schema_cell_idx
-        read = self.read_pid(schema_pid)
 
         meta_columns = [indirection_pid, rid_pid, time_pid, schema_pid]
 
