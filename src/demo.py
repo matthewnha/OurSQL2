@@ -90,6 +90,7 @@ def handle_assignment():
     grade = None # type: str
     
     while type(grade) is not int:
+
         try :
             grade = input("Grade to change: ") 
             grade = int(grade)
@@ -99,6 +100,7 @@ def handle_assignment():
     assign = None
     while type(assign) is not int:
         assign = input ("Which grade to change (int from 1 to 4)? :")
+
         try:
             assign = int(assign)
         except ValueError:
@@ -108,8 +110,11 @@ def handle_assignment():
             print("Not in range.")
             assign = None
 
-    updated = update_student(id,grade,assign)
-
+    try: 
+        updated = update_student(id,grade,assign)
+    except:
+        print("Not a valid key.")
+        return False
     return updated
 
 def handle_delete():
