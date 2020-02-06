@@ -124,7 +124,10 @@ def handle_assignment():
     return updated
 
 def handle_delete():
-  pass
+    deleteKey = input("Please enter Student ID to delete: ")
+    print(deleteKey + " id deleted.")
+    query.delete(int(deleteKey))
+    return True
 
 def handle_sum():
   print("Summing up grades!")
