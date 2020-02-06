@@ -33,6 +33,9 @@ def get_student_grades(key, q):
 def handle_help():
   print('Commands:')
   print('=================================')
+  print('help: Show commands')
+  print('new: Create new user and his grades')
+  print('')
 
 def handle_new():
   name = input("Student name: ")
@@ -75,6 +78,9 @@ def handle_grades():
 
   return True
 
+def handle_assignment():
+  pass
+
 def handle_delete():
   pass
 
@@ -83,10 +89,11 @@ def handle_sum():
 
 switcher = {
   'help': handle_help,
-  'new': handle_new,
-  'grades': handle_grades,
-  'delete': handle_delete,
-  'sum': handle_sum
+  'new': handle_new, # New user
+  'grades': handle_grades, # Get grades
+  'assignment': handle_assignment, # Update 1 assignment
+  'delete': handle_delete, # Delete student
+  'sum': handle_sum # Sum grades
 }
 
 def main():
