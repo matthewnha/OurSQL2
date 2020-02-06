@@ -146,7 +146,7 @@ def handle_delete():
       return False
 
     del students[id]
-    print(id + " id deleted.")
+    print(deleteKey + " id deleted.")
     return True
 
 def handle_sum():
