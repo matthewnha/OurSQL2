@@ -34,7 +34,7 @@ def handle_help():
   print('Commands:')
   print('=================================')
   print('help: Show commands')
-  print('new: Create new user and his grades')
+  print('new: Create new student and his grades')
   print('')
 
 def handle_new():
@@ -79,7 +79,32 @@ def handle_grades():
   return True
 
 def handle_assignment():
-  pass
+    id = int(input("Student ID: "))
+
+    grade = None # type: str
+    
+    while type(grade) is not int:
+        try :
+            grade = input("Grade to change: ") 
+            grade = int(grade)
+        except ValueError:
+            print("Not a valid grade")
+
+    assign = None
+    while type(assign) is not int:
+        assign = input ("Which grade to change (int from 1 to 4)? :")
+        try:
+            assign = int(assign)
+        except ValueError:
+            print("Not a valid number.")
+
+        if assign > 4 or assign < 1:
+            print("Not in range.")
+            assign = None
+
+    updated = update_student(id,grade,assign)
+
+    return updated
 
 def handle_delete():
   pass
