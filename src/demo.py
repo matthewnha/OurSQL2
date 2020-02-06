@@ -56,7 +56,11 @@ def handle_new():
   if len(grades) != 4:
     return False
 
-  ok = create_new_student(name, id, grades)
+  try:
+    ok = create_new_student(name, id, grades)
+  except:
+    print("Not Valid")
+    return False
 
   return ok
   
@@ -76,7 +80,11 @@ def handle_grades():
     return False
 
   query = [0] + grades
-  fetched = get_student_grades(id, query)[0].columns
+  try:
+    fetched = get_student_grades(id, query)[0].columns
+  except:
+    print("Not Valid")
+    return False
 
   for i, q in enumerate(grades):
     if q == 1:
@@ -138,7 +146,7 @@ def main():
 
   while True:
     command = input("Enter command: ") 
-    last_command = command.strip()
+   last_command = command.strip()
 
     if command == 'stop':
       break
@@ -156,5 +164,5 @@ def main():
       print("\nFailed :(")
     
     print("=============================\n")
-    
-main()
+
+    main()
