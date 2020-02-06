@@ -289,16 +289,7 @@ class Table:
 
         collapsed = self.collapse_row(key, query_columns)
 
-        c_i = 0
-        columns = []
-        for i in range(self.num_columns):
-            if 0 == query_columns[i]:
-                columns.append(None)
-            else:
-                columns.append(collapsed[c_i])
-                c_i += 1
-
-        record = Record(None, key, columns)
+        record = Record(None, key, collapsed)
         return [record]
 
     def collapse_row(self, key, query_columns):
