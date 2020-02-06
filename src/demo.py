@@ -138,7 +138,7 @@ def main():
 
   while True:
     command = input("Enter command: ") 
-    last_command = command
+    last_command = command.strip()
 
     
     if command == 'stop':
