@@ -12,7 +12,7 @@ query = Query(grades_table)
 students = dict()
 
 def create_new_student(name, student_id, *grades):
-  students[name] = student_id
+  students[student_id] = name
   return query.insert(student_id, *(grades[0]))
 
 def update_student(student_id, grade, assignment):
@@ -39,6 +39,7 @@ def handle_help():
   print('assignment: Update student\'s grade on an assignment')
   print('delete: Delete a student\'s records')
   print('sum: Get the sum of grades for an assignment')
+  print('stop: Stop program')
 
 def handle_new():
   name = input("Student name: ")
@@ -82,8 +83,8 @@ def handle_grades():
   query = [0] + grades
   try:
     fetched = get_student_grades(id, query)[0].columns
-  except:
-    print("Not Valid")
+  except Exception:
+    print("Student not found.")
     return False
 
   for i, q in enumerate(grades):
@@ -100,7 +101,7 @@ def handle_assignment():
     while type(grade) is not int:
 
         try :
-            grade = input("Grade to change: ") 
+            grade = input("New Grade: ") 
             grade = int(grade)
         except ValueError:
             print("Not a valid grade")
@@ -131,13 +132,19 @@ def handle_delete():
 def handle_sum():
   pass
 
+def handle_students():
+  for id in sorted(students):
+    name = students[id]
+    print("Student: ", name,"id: ",id)
+
 switcher = {
   'help': handle_help,
   'new': handle_new, # New user
   'grades': handle_grades, # Get grades
   'assignment': handle_assignment, # Update 1 assignment
   'delete': handle_delete, # Delete student
-  'sum': handle_sum # Sum grades
+  'sum': handle_sum, # Sum grades
+  'students' : handle_students # Gives student list
 }
 
 def main():
@@ -146,7 +153,7 @@ def main():
 
   while True:
     command = input("Enter command: ") 
-   last_command = command.strip()
+    last_command = command.strip()
 
     if command == 'stop':
       break
@@ -154,7 +161,7 @@ def main():
     try:
       func = switcher[command]
     except:
-      print("Command not valid. Type 'help' for list of commands")
+      print("Command not valid. Type 'help' for list of commands. \n")
       continue
     ok = switcher[command]()
 
@@ -165,4 +172,4 @@ def main():
     
     print("=============================\n")
 
-    main()
+main()
