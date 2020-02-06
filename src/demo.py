@@ -32,7 +32,7 @@ def get_student_grades(key, q):
 
 def handle_help():
   print('Commands:')
-  print('=================================')
+  print('==')
   print('help: Show commands')
   print('new: Create new student and his grades')
   print('grades: Print student\'s grades')
@@ -40,6 +40,8 @@ def handle_help():
   print('delete: Delete a student\'s records')
   print('sum: Get the sum of grades for an assignment')
   print('stop: Stop program')
+
+  return True
 
 def handle_new():
   name = input("Student name: ")
@@ -130,18 +132,21 @@ def handle_delete():
     return True
 
 def handle_sum():
-  print("Summing up grades!")
-  start_sid = int(input("Enter start SID:"))
-  end_sid = int(input("Enter end SID:"))
+  print("~ Summing up grades ~")
+  start_sid = int(input("Enter start SID: "))
+  end_sid = int(input("Enter end SID: "))
 
   assignment = 0
   while 0 == assignment:
-    assignment = int(input("Assignment to sum up:"))
+    assignment = int(input("Assignment to sum up: "))
     if assignment < 1 or assignment > 4:
       print('Error: Please enter an assignment from 1-4')
+      assignment = 0
 
   sum = sum_grades(start_sid, end_sid, assignment)
-  print(sum)
+  print('\n', "Sum of assignment " + str(assignment) + ":", sum)
+
+  return True
 
 switcher = {
   'help': handle_help,
