@@ -167,11 +167,14 @@ def handle_sum():
   return True
 
 def handle_students():
+  print("{:<20}{:<15}".format("Student", "ID"))
+  print("{:<20}{:<15}".format("------", "------"))
 
   for id in sorted(students):
     name = students[id]
-    print("Student: ", name,"\t ID: ",id)
-  
+    row = "{:<20}{:<15}".format(name, id)
+    print(row)
+
   return True
 
 switcher = {
