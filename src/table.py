@@ -19,6 +19,13 @@ class RecordPids:
         self.key_col= key
         self.columns = columns
 
+class Record:
+
+    def __init__(self, rid, key, columns):
+        self.rid = rid
+        self.key_col= key
+        self.columns = columns
+
 class Table:
 
     """
@@ -280,11 +287,18 @@ class Table:
             raise Exception("Not a valid key")
 
         collapsed = self.collapse_row(key, query_columns)
-        entry = {
-            'columns': collapsed
-        }
 
-        return [entry]
+        c_i = 0
+        columns = []
+        for i in range(self.num_columns):
+            if 0 == query_columns[i]:
+                columns.append(None)
+            else:
+                columns.append(collapsed[c_i])
+                c_i += 1
+
+        record = Record(None, key, columns)
+        return [record]
 
     def collapse_row(self, key, query_columns):
         resp = [None for _ in query_columns]
