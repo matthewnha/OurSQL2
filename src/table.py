@@ -150,7 +150,7 @@ class Table:
         # Timestamp
         millisec = int(round(time.time()*1000))
         bytes_to_write = int_to_bytes(millisec)
-        time_page.write(bytes_to_write)
+        cell_dex = time_page.write(bytes_to_write)
 
         # Schema Encoding
         schema_encoding = 0
@@ -286,8 +286,14 @@ class Table:
         return True
 
     def select(self, key, query_columns):
+
+        try:
+            self.key_index[key]
+        except KeyError: 
+            raise Exception("Not a valid key.")
+
         if 0 == self.key_index[key]:
-            raise Exception("Not a valid key")
+            raise Exception("Key has been deleted.")
 
         collapsed = self.collapse_row(key, query_columns)
 
@@ -339,10 +345,14 @@ class Table:
         return resp
 
     def delete_record(self, key):
-        base_rid = self.key_index[key]
-        
-        if 0 == base_rid:
+
+        try:
+            base_rid = self.key_index[key]
+        except KeyError:
             raise Exception("Not a valid key")
+
+        if 0 == base_rid:
+            raise Exception("Key has been deleted.")
 
         base_record = self.page_directory[base_rid]  # type: RecordPids
         base_rid_page = self.get_page(base_record.columns[RID_COLUMN])
