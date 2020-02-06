@@ -140,11 +140,12 @@ class Table:
         indirection_page.write(rid_in_bytes)
 
         # Timestamp
-        bytes_to_write = b'\x00'
+        int_to_write = 0
+        bytes_to_write = int_to_bytes(int_to_write)
         time_page.write(bytes_to_write)
 
         # Schema Encoding
-        schema_encoding = 0b0000
+        schema_encoding = 0
         bytes_to_write = int_to_bytes(schema_encoding)
         schema_page.write(bytes_to_write)
 
@@ -232,12 +233,10 @@ class Table:
 
         # write encoding
         bytes_to_write = int_to_bytes(tail_schema_encoding)
-        print(schema_pid, "pid is writing",bytes_to_write)
         num_records_in_page = schema_page.write(bytes_to_write)
         schema_cell_idx = num_records_in_page - 1
         schema_pid[0] = schema_cell_idx
         read = self.read_pid(schema_pid)
-        print(schema_pid, "pid is reading", read,"schema")
 
         meta_columns = [indirection_pid, rid_pid, time_pid, schema_pid]
 
@@ -271,7 +270,6 @@ class Table:
         base_schema_enc_bytes = base_enc_page.read(base_enc_cell_idx)
         base_schema_enc_int = int_from_bytes(base_schema_enc_bytes)
         new_base_enc = base_schema_enc_int | tail_schema_encoding
-        #print(new_base_enc)
         bytes_to_write = int_to_bytes(new_base_enc)
         base_enc_page.writeToCell(bytes_to_write, base_enc_cell_idx)
         
@@ -321,7 +319,7 @@ class Table:
             #print(next_rid, "next", curr_enc_pid, "schema", curr_enc_binary, "order")
 
             for data_col_idx, is_updated in enumerate(curr_enc_binary):
-               # print("still needs",need,"curr schema",curr_enc_binary,"dex", data_col_idx, "at", is_updated)
+                #print("still needs",need,"curr schema",curr_enc_binary,"dex", data_col_idx, "at", is_updated)
                 if is_updated == '0' or need[data_col_idx] == 0:
                     continue
                 col_pid = curr_record.columns[START_USER_DATA_COLUMN + data_col_idx]
@@ -329,10 +327,6 @@ class Table:
                 data = int_from_bytes(data)
                 resp[data_col_idx] = data
                 need[data_col_idx] = 0
-
-            # curr_indir_pid = curr_record.columns[INDIRECTION_COLUMN]
-            # next_rid = self.read_pid(curr_indir_pid)
-            # next_rid = int_from_bytes(next_rid)
 
         return resp
 
