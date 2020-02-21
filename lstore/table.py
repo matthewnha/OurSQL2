@@ -358,6 +358,13 @@ class Table:
         base_rid_page = self.get_page(base_record.columns[RID_COLUMN])
         base_rid_cell_inx,_,_ = base_record.columns[RID_COLUMN]
 
+        base_rid_page.writeToCell(int_to_bytes(0),base_rid_cell_inx)
+        del self.page_directory[base_rid]
+        self.key_index[key] = 0
+        if 0 in self.page_directory:
+            self.page_directory[0].append(base_record)
+        else:
+            self.page_directory[0] = [base_record]
 
         base_indir_page_pid = base_record.columns[INDIRECTION_COLUMN]
         new_tail_rid = self.read_pid(base_indir_page_pid)
@@ -370,7 +377,8 @@ class Table:
             new_tail_rid_cell_inx,_,_ = new_tail_record.columns[RID_COLUMN]
 
             new_tail_rid_page.writeToCell(int_to_bytes(0),new_tail_rid_cell_inx)
-            self.page_directory[new_tail_rid] = 0
+            del self.page_directory[new_tail_rid]
+            self.page_directory[0].append(new_tail_record)
             if(base_rid == new_tail_rid):
                 break
             else:
@@ -378,10 +386,6 @@ class Table:
                 new_tail_rid = self.read_pid(new_tail_indir_page_pid)
                 new_tail_rid = int_from_bytes(new_tail_rid)
 
-
-        base_rid_page.writeToCell(int_to_bytes(0),base_rid_cell_inx)
-        self.page_directory[new_tail_rid] = 0
-        self.key_index[key] = 0
         return True
 
 
@@ -406,6 +410,7 @@ class Table:
                 curr_key += 1
                 continue
             if curr_rid == 0:
+                curr_key += 1
                 continue
             value = self.collapse_row(curr_key,query_columns)[aggregate_column_index]
             sum += value
