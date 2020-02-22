@@ -7,24 +7,22 @@ from math import ceil, floor
 from util import *
 import time
 
-INDIRECTION_COLUMN = 0
-RID_COLUMN = 1
-TIMESTAMP_COLUMN = 2
-SCHEMA_ENCODING_COLUMN = 3
-START_USER_DATA_COLUMN = 4
-
 class MetaRecord:
 
     def __init__(self, rid, key, columns):
         self.rid = rid
-        self.key_col= key
+        self.key = key
         self.columns = columns
+
+    def copy(self):
+        copy = MetaRecord(self.rid, self.key, self.columns)
+        return copy
 
 class Record:
 
     def __init__(self, rid, key, columns):
         self.rid = rid
-        self.key_col= key
+        self.key = key
         self.columns = columns
 
 class Table:

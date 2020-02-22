@@ -1,13 +1,15 @@
 from config import *
+from util import *
+
 class Page:
 
     def __init__(self):
         self.num_records = 0
         self.data = bytearray(4096)
-        self.cellSize = 4096 // CELLS_PER_PAGE
+        self.cellSize = (4096 // BLOCKS_PER_PAGE)
 
     def has_capacity(self):
-        return self.num_records < CELLS_PER_PAGE
+        return self.num_records < (CELLS_PER_PAGE)
 
     def get_num_records(self):
         return self.num_records
@@ -21,7 +23,7 @@ class Page:
         if not self.has_capacity():
             raise Exception('page is full')
 
-        start = self.num_records * self.cellSize
+        start = (self.num_records + 1) * self.cellSize
         end = start + self.cellSize
         if len(value) != self.cellSize:
             value = int.from_bytes(value,'little')
@@ -38,7 +40,7 @@ class Page:
             value: Must be bytes of the specified CELLS_PER_PAGE size
         '''
 
-        start = cell_idx * self.cellSize
+        start = (cell_idx + 1) * self.cellSize
         end = start + self.cellSize
         if len(value) != self.cellSize:
             value = int.from_bytes(value,'little')
@@ -48,6 +50,16 @@ class Page:
 
         return self.num_records
 
+    def write_tps(self, tid):
+        bytes_to_write = tid.to_bytes(self.cellSize,'little')
+        start = 0
+        end = start + self.cellSize
+        self.data[start:end] = bytes_to_write
+
+    def read_tps(self):
+        return bytes(self.data[0:self.cellSize])
+
+
     def read(self, cellIndex):
         '''
             Reads bytes from page, returning a bytearray
@@ -56,7 +68,7 @@ class Page:
         if cellIndex > CELLS_PER_PAGE - 1:
             raise Exception('cellIndex exceeds page size')
 
-        start = cellIndex * self.cellSize
+        start = (cellIndex + 1) * self.cellSize
         end = start + self.cellSize
         return bytes(self.data[start:end])
 
