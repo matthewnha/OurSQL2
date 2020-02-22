@@ -8,6 +8,7 @@ class Database():
         pass
 
     def open(self, path):
+        
         pass
 
     def close(self):

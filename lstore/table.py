@@ -48,6 +48,7 @@ class Table:
         self.index = Index(self)
 
         self.prev_rid = 0
+        self.prev_tid = 2**64
         pass
 
     def get_page(self, pid): # type: Page
@@ -218,8 +219,8 @@ class Table:
         rid_pid = [None, rid_inner_idx, page_range_idx]
 
         # write rid
-        self.prev_rid += 1
-        new_rid = self.prev_rid
+        self.prev_tid -= 1
+        new_rid = self.prev_tid
         rid_in_bytes = int_to_bytes(new_rid)
         num_records_in_page = rid_page.write(rid_in_bytes)
         rid_cell_idx = num_records_in_page - 1
@@ -275,13 +276,13 @@ class Table:
         self.page_directory[new_rid] = tail_record
         # Update base record indirection and schema
         new_rid_bytes = int_to_bytes(new_rid)
-        base_indir_page.writeToCell(new_rid_bytes, base_indir_cell_idx)
+        base_indir_page.write_to_cell(new_rid_bytes, base_indir_cell_idx)
 
         base_schema_enc_bytes = base_enc_page.read(base_enc_cell_idx)
         base_schema_enc_int = int_from_bytes(base_schema_enc_bytes)
         new_base_enc = base_schema_enc_int | tail_schema_encoding
         bytes_to_write = int_to_bytes(new_base_enc)
-        base_enc_page.writeToCell(bytes_to_write, base_enc_cell_idx)
+        base_enc_page.write_to_cell(bytes_to_write, base_enc_cell_idx)
         
         return True
 
@@ -358,7 +359,7 @@ class Table:
         base_rid_page = self.get_page(base_record.columns[RID_COLUMN])
         base_rid_cell_inx,_,_ = base_record.columns[RID_COLUMN]
 
-        base_rid_page.writeToCell(int_to_bytes(0),base_rid_cell_inx)
+        base_rid_page.write_to_cell(int_to_bytes(0),base_rid_cell_inx)
         self.key_index[key] = 0
         if 0 in self.page_directory:
             self.page_directory[0].append(base_record)
@@ -375,7 +376,7 @@ class Table:
             new_tail_rid_page = self.get_page(new_tail_record.columns[RID_COLUMN]) # type: Page
             new_tail_rid_cell_inx,_,_ = new_tail_record.columns[RID_COLUMN]
 
-            new_tail_rid_page.writeToCell(int_to_bytes(0),new_tail_rid_cell_inx)
+            new_tail_rid_page.write_to_cell(int_to_bytes(0),new_tail_rid_cell_inx)
             del self.page_directory[new_tail_rid]
             self.page_directory[0].append(new_tail_record)
             if(base_rid == new_tail_rid):
