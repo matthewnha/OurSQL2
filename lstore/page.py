@@ -30,7 +30,7 @@ class Page:
         self.num_records += 1
         return self.num_records
 
-    def writeToCell(self, value, cell_idx):
+    def write_to_cell(self, value, cell_idx):
         '''
             Writes bytes to the page at specific cell
             Only write to cells that you KNOW have been written to!
@@ -59,4 +59,10 @@ class Page:
         start = cellIndex * self.cellSize
         end = start + self.cellSize
         return bytes(self.data[start:end])
+
+    def copy(self):
+        copy = Page()
+        copy.data = self.data.copy()
+        copy.num_records = self.num_records
+        return copy
 
