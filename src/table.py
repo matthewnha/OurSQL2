@@ -406,6 +406,7 @@ class Table:
                 curr_key += 1
                 continue
             if curr_rid == 0:
+                curr_key +=1 
                 continue
             value = self.collapse_row(curr_key,query_columns)[aggregate_column_index]
             sum += value
