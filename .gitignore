@@ -1,6 +1,5 @@
 .DS_Store
 __pycache__
-*.test.py
 *.pyc
 .vscode
 log.txt
