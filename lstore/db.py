@@ -22,6 +22,7 @@ class Database():
 
     def create_table(self, name, num_columns, key):
         table = Table(name, num_columns, key)
+        self.tables.append(table)
         return table
 
     """
@@ -29,8 +30,10 @@ class Database():
     """
     def drop_table(self, name):
         pass
-
+    
+    """
      # Returns table with the passed name
+    """
 
     def get_table(self, name):
         pass

@@ -410,11 +410,7 @@ class Table:
                 curr_key += 1
                 continue
             if curr_rid == 0:
-<<<<<<< HEAD:lstore/table.py
-                curr_key += 1
-=======
                 curr_key +=1 
->>>>>>> aca51e19d740007f3324c76bdfa1a93bc5a0b02a:src/table.py
                 continue
             value = self.collapse_row(curr_key,query_columns)[aggregate_column_index]
             sum += value
