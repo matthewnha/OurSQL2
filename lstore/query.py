@@ -1,4 +1,4 @@
-from table import Table, RecordPids
+from table import Table, MetaRecord
 from index import Index
 import time
 
