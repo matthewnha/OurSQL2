@@ -9,6 +9,7 @@ class MergeJob:
         self.copied_metarecords = {}
         self.copied_base_pages = {}
         self.copied_prev_rid = None
+        self.min_tid = 2**64
         self.table = table # type: Table
 
     def copy_data(self):
@@ -34,6 +35,19 @@ class MergeJob:
         page = self.copied_base_pages[(inner_idx, range_idx)] # type: Page
         bytes_read = page.read(cell_idx)
         return bytes_read
+
+    def write_to_copied_by_pid(self, pid, data):
+        '''
+        write to copied page
+
+        pid: full address
+        data: data as number
+        '''
+
+        cell_idx, inner_idx, range_idx = pid
+        page = self.copied_base_pages[(inner_idx, range_idx)] # type: Page
+        bytes_to_write = int_to_bytes(data)
+        page.write_to_cell(bytes_to_write, cell_idx)
 
     def collapse_record(self, rid):
         base_record = self.copied_metarecords[rid] # type: MetaRecord
@@ -84,6 +98,7 @@ class MergeJob:
             curr_indir_pid = curr_record.columns[INDIRECTION_COLUMN]
             next_rid = self.table.read_pid(curr_indir_pid)
             next_rid = int_from_bytes(next_rid)
+            self.min_tid = min(self.min_tid, next_rid)
             curr_record = self.table.page_directory[next_rid]
 
             curr_enc_pid = curr_record.columns[SCHEMA_ENCODING_COLUMN]
@@ -101,7 +116,26 @@ class MergeJob:
                 resp[data_col_idx] = data
                 need[data_col_idx] = 0
 
-        return resp
+        return [base_record, resp]
+
+    def write_collapsed_pages(self, base_record, data_cols):
+        
+        for i, data in enumerate(data_cols):
+            pid = base_record.columns[START_USER_DATA_COLUMN + 1]
+            print('')
+            self.write_to_copied_by_pid(pid, data)
+            print('')
+        pass
+
+    def write_tps_to_all(self):
+
+        for page in self.copied_base_pages.values():
+            print('')
+            page.write_tps(self.min_tid)
+            print('')
+
+        pass
+            
             
 
     def run(self):
@@ -110,6 +144,10 @@ class MergeJob:
         self.copied_metarecords, self.copied_base_pages = self.copy_data()
 
         for rid in range(1, self.copied_prev_rid+1):
-            self.collapse_record(rid)
+            base_record, data_cols = self.collapse_record(rid)
+            self.write_collapsed_pages(base_record, data_cols)
+
+        self.write_tps_to_all()
+        # todo: lock and write to 
 
         pass
