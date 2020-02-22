@@ -359,7 +359,6 @@ class Table:
         base_rid_cell_inx,_,_ = base_record.columns[RID_COLUMN]
 
         base_rid_page.writeToCell(int_to_bytes(0),base_rid_cell_inx)
-        del self.page_directory[base_rid]
         self.key_index[key] = 0
         if 0 in self.page_directory:
             self.page_directory[0].append(base_record)
