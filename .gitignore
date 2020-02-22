@@ -7,3 +7,4 @@ log.txt
 bytetest.py
 dec_demo.py
 .Rhistory
+.pylintrc
