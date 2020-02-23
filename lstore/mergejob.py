@@ -122,14 +122,12 @@ class MergeJob:
         for i, data in enumerate(data_cols):
             pid = base_record.columns[START_USER_DATA_COLUMN + 1]
             self.write_to_copied_by_pid(pid, data)
-        pass
 
     def write_tps_to_all(self):
 
         for page in self.copied_base_pages.values():
             page.write_tps(self.min_tid)
 
-        pass
             
             
 
