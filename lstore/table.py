@@ -388,9 +388,9 @@ class Table:
                 curr_indir_pid = curr_record.columns[INDIRECTION_COLUMN]
                 next_rid = int_from_bytes(self.read_pid(curr_indir_pid))
 
-                # Release locks and return
-                release_all(locks)
-                return resp
+            # Release locks and return
+            release_all(locks)
+            return resp
 
     def delete_record(self, key):
 
