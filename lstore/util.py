@@ -36,3 +36,24 @@ def get_inner_index_from_outer_index(outer_index, container_size):
       break
 
   return base_index
+
+def acquire_all(locks):
+  acquired = []
+
+  for lock in locks:
+    is_acquired = lock.acquire(False)
+
+    if not is_acquired:
+      for to_release in acquired:
+        to_release.release()
+
+      # print('Couldn\'t acquire all locks')
+      return False
+
+    acquired.insert(0, lock)
+
+  return acquired
+
+def release_all(locks):
+  for lock in locks:
+    lock.release()
