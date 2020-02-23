@@ -2,9 +2,6 @@ from table import *
 from config import *
 from page import Page
 from util import *
-import logging
-import threading
-import time
 
 class MergeJob:
 
@@ -12,7 +9,7 @@ class MergeJob:
         self.copied_metarecords = {}
         self.copied_base_pages = {}
         self.copied_prev_rid = None
-        self.min_tid = 2**64
+        self.min_tid = 2**64 - 1
         self.table = table # type: Table
 
     def copy_data(self):
@@ -20,8 +17,11 @@ class MergeJob:
         copied_metarecords = {}
         copied_base_pages = {}
         for rid in range(1, self.copied_prev_rid+1):
+            if rid not in self.table.page_directory:
+                continue
+
             current_record = self.table.page_directory[rid].copy()
-           
+        
             for pid in current_record.columns:
                 cell_idx, inner_idx, range_idx = pid
 
@@ -54,10 +54,6 @@ class MergeJob:
 
     def collapse_record(self, rid):
         base_record = self.copied_metarecords[rid] # type: MetaRecord
-        USER_COLS_START = START_USER_DATA_COLUMN
-        # for pid in base_record.columns[USER_COLS_START:]:
-        #     pass
-
 
         resp = [None for _ in range(self.table.num_columns)]
         need = [1 for _ in range(self.table.num_columns)]
@@ -108,7 +104,7 @@ class MergeJob:
             curr_enc_bytes = self.table.read_pid(curr_enc_pid)
             curr_enc = int_from_bytes(curr_enc_bytes)
             curr_enc_binary = bin(curr_enc)[2:].zfill(self.table.num_columns)
- 
+
             for data_col_idx, is_updated in enumerate(curr_enc_binary):
                 #print("still needs",need,"curr schema",curr_enc_binary,"dex", data_col_idx, "at", is_updated)
                 if is_updated == '0' or need[data_col_idx] == 0:
@@ -125,17 +121,13 @@ class MergeJob:
         
         for i, data in enumerate(data_cols):
             pid = base_record.columns[START_USER_DATA_COLUMN + 1]
-            print('')
             self.write_to_copied_by_pid(pid, data)
-            print('')
         pass
 
     def write_tps_to_all(self):
 
         for page in self.copied_base_pages.values():
-            print('')
             page.write_tps(self.min_tid)
-            print('')
 
         pass
             
@@ -143,14 +135,26 @@ class MergeJob:
 
     def run(self):
         
-        # todo: lock
-        self.copied_metarecords, self.copied_base_pages = self.copy_data()
+        with self.table.merge_lock:
+            self.copied_metarecords, self.copied_base_pages = self.copy_data()
 
         for rid in range(1, self.copied_prev_rid+1):
+
+            if rid not in self.table.page_directory:
+                continue
+
+            # Lock record from deletion
+            self.table.del_locks[rid].acquire()
+            if rid not in self.table.page_directory: # If we just acquired the del lock, we might've acquired it after a delete
+                self.table.del_locks[rid].release()
+                # print('Got lock but the base record was deleted')
+                continue
+
+            # Collapse
             base_record, data_cols = self.collapse_record(rid)
             self.write_collapsed_pages(base_record, data_cols)
 
-        self.write_tps_to_all()
-        # todo: lock and write to 
+            # Release lock
+            self.table.del_locks[rid].release()
 
-        pass
+        self.write_tps_to_all()
