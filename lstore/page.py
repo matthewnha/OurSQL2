@@ -7,6 +7,8 @@ class Page:
         self.num_records = 0
         self.data = bytearray(4096)
         self.cellSize = (4096 // BLOCKS_PER_PAGE)
+        self.pins = 0
+        self.is_dirty = False
 
     def has_capacity(self):
         return self.num_records < (CELLS_PER_PAGE)
@@ -30,6 +32,7 @@ class Page:
             value = value.to_bytes(self.cellSize,'little')
         self.data[start:end] = value
         self.num_records += 1
+        self.is_dirty = True
         return self.num_records
 
     def write_to_cell(self, value, cell_idx):
@@ -46,7 +49,7 @@ class Page:
             value = int.from_bytes(value,'little')
             value = value.to_bytes(self.cellSize,'little')
         self.data[start:end] = value
-        
+        self.is_dirty = True
 
         return self.num_records
 
@@ -55,7 +58,17 @@ class Page:
         start = 0
         end = start + self.cellSize
         self.data[start:end] = bytes_to_write
+        self.is_dirty = True
 
+    def add_pin(self):
+        self.pins += 1
+
+    def remove_pin(self):
+        if self.pins <= 0:
+            raise Exception("No Current Pins")
+        self.pins -= 1
+
+    
     def read_tps(self):
         return bytes(self.data[0:self.cellSize])
 
