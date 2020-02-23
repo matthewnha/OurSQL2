@@ -6,8 +6,8 @@ from util import *
 class MergeJob:
 
     def __init__(self, table):
-        self.copied_metarecords = {}
-        self.copied_base_pages = {}
+        self.copied_metarecords = {} # key to metarecord
+        self.copied_base_pages = {} # (inner, pr) to page
         self.copied_prev_rid = None
         self.min_tid = 2**64 - 1
         self.table = table # type: Table
@@ -39,6 +39,9 @@ class MergeJob:
         bytes_read = page.read(cell_idx)
         return bytes_read
 
+    def read_copied_by_pid_as_int(self, pid):
+        return int_from_bytes(self.read_copied_by_pid(pid))
+
     def write_to_copied_by_pid(self, pid, data):
         '''
         write to copied page
@@ -59,8 +62,8 @@ class MergeJob:
         need = [1 for _ in range(self.table.num_columns)]
 
         base_enc_pid = base_record.columns[SCHEMA_ENCODING_COLUMN]
-        base_enc_bytes = self.read_copied_by_pid(base_enc_pid)
-        base_enc_binary = bin(int_from_bytes(base_enc_bytes))[2:].zfill(self.table.num_columns)
+        base_enc = self.read_copied_by_pid_as_int(base_enc_pid)
+        base_enc_binary = bin(base_enc)[2:].zfill(self.table.num_columns)
 
         for data_col_idx, is_dirty in enumerate(base_enc_binary):
             if is_dirty == '1' or need[data_col_idx] == 0:
@@ -70,33 +73,12 @@ class MergeJob:
             resp[data_col_idx] = int_from_bytes(data)
             need[data_col_idx] = 0
 
-
-        # read base record
+        # get RID of next tail record
         curr_indir_pid = base_record.columns[INDIRECTION_COLUMN]
-        next_rid = self.read_copied_by_pid(curr_indir_pid)
-        next_rid = int_from_bytes(next_rid)
-        curr_record = self.table.page_directory[next_rid] # Reading tails from real data in table now
-
-        curr_enc_pid = curr_record.columns[SCHEMA_ENCODING_COLUMN]
-        curr_enc_bytes = self.table.read_pid(curr_enc_pid)
-        curr_enc = int_from_bytes(curr_enc_bytes)
-        curr_enc_binary = bin(curr_enc)[2:].zfill(self.table.num_columns)
-
-        for data_col_idx, is_updated in enumerate(curr_enc_binary):
-            #print("still needs",need,"curr schema",curr_enc_binary,"dex", data_col_idx, "at", is_updated)
-            if is_updated == '0' or need[data_col_idx] == 0:
-                continue
-            col_pid = curr_record.columns[START_USER_DATA_COLUMN + data_col_idx]
-            data = self.table.read_pid(col_pid)
-            data = int_from_bytes(data)
-            resp[data_col_idx] = data
-            need[data_col_idx] = 0
+        next_rid = self.read_copied_by_pid_as_int(curr_indir_pid)
 
         # read tail records
         while sum(need) != 0: #  todo: or indirection > tps or more?
-            curr_indir_pid = curr_record.columns[INDIRECTION_COLUMN]
-            next_rid = self.table.read_pid(curr_indir_pid)
-            next_rid = int_from_bytes(next_rid)
             self.min_tid = min(self.min_tid, next_rid)
             curr_record = self.table.page_directory[next_rid]
 
@@ -115,6 +97,9 @@ class MergeJob:
                 resp[data_col_idx] = data
                 need[data_col_idx] = 0
 
+            curr_indir_pid = curr_record.columns[INDIRECTION_COLUMN]
+            next_rid = int_from_bytes(self.table.read_pid(curr_indir_pid))
+
         return [base_record, resp]
 
     def write_collapsed_pages(self, base_record, data_cols):
@@ -128,8 +113,12 @@ class MergeJob:
         for page in self.copied_base_pages.values():
             page.write_tps(self.min_tid)
 
-            
-            
+    def load_into_table(self, merged_record):
+        og_record = self.table.page_directory[merged_record.rid]
+        og_metacolumns  = og_record.columns[0:START_USER_DATA_COLUMN]
+        merged_data_cols = merged_record.columns[START_USER_DATA_COLUMN:]
+        merged_record.columns = og_metacolumns + merged_data_cols
+        self.table.page_directory[merged_record.rid] = merged_record
 
     def run(self):
         
@@ -156,3 +145,26 @@ class MergeJob:
             self.table.del_locks[rid].release()
 
         self.write_tps_to_all()
+
+        for rid in range(1, self.copied_prev_rid+1):
+
+            if rid not in self.copied_metarecords:
+                continue
+
+            # Lock record from rw/deletion
+            while(1):
+                acquire_resp = acquire_all([self.table.rw_locks[rid], self.table.del_locks[rid]])
+                if acquire_resp is False:
+                    continue
+                locks = acquire_resp
+
+                if rid not in self.table.page_directory: # If we just acquired the del lock, we might've acquired it after a delete
+                    release_all(locks)
+                    break
+
+                # Write back
+                metarecord = self.copied_metarecords[rid]
+                self.load_into_table(metarecord)
+
+                # Release lock
+                release_all(locks)
