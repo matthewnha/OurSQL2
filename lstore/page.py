@@ -7,7 +7,6 @@ class Page:
         self.num_records = 0
         self.data = bytearray(4096)
         self.cellSize = (4096 // BLOCKS_PER_PAGE)
-        self.pins = 0
         self.is_dirty = False
 
     def has_capacity(self):
