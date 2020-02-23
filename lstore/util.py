@@ -1,17 +1,17 @@
 from config import *
 
-def parse_schema_enc_from_bytes(bytes):
+def parse_schema_enc_from_bytes(enc_bytes):
   '''
     Takes bytes of schema encoding and converts it to a string 
   '''
 
   ret_enc = ''
-  for byte in bytes:
+  for byte in enc_bytes:
       ret_enc += '' + str(byte)
   return ret_enc
 
-def int_from_bytes(bytes):
-  return int.from_bytes(bytes, BYTE_ORDER)
+def int_from_bytes(from_bytes):
+  return int.from_bytes(from_bytes, BYTE_ORDER)
 
 def int_to_bytes(data):
   return data.to_bytes(CELL_SIZE_BYTES, BYTE_ORDER)
@@ -36,3 +36,24 @@ def get_inner_index_from_outer_index(outer_index, container_size):
       break
 
   return base_index
+
+def acquire_all(locks):
+  acquired = []
+
+  for lock in locks:
+    is_acquired = lock.acquire(False)
+
+    if not is_acquired:
+      for to_release in acquired:
+        to_release.release()
+
+      # print('Couldn\'t acquire all locks')
+      return False
+
+    acquired.insert(0, lock)
+
+  return acquired
+
+def release_all(locks):
+  for lock in locks:
+    lock.release()

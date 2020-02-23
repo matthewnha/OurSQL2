@@ -187,17 +187,14 @@ class Table:
         while(1):
 
             # Start acquire lock ===========
+
             lock_attempts += 1
-            have_merge_lock = self.merge_lock.acquire(False)
-            if not have_merge_lock:
-                # print('Couldn\'t acquire merge lock.', 'Attempt', lock_attempts)
+            acquire_resp = acquire_all([self.merge_lock, self.rw_locks[base_rid]])
+            if acquire_resp is False:
                 continue
 
-            have_metarecord_lock = self.rw_locks[base_rid].acquire(False)
-            if not have_metarecord_lock:
-                self.merge_lock.release()
-                # print('Couldn\'t acquire metarecord lock.', 'Attempt', lock_attempts)
-                continue
+            locks = acquire_resp
+            
             # Acquired lock ===========
 
             base_record = self.page_directory[base_rid] # type: MetaRecord
@@ -213,8 +210,9 @@ class Table:
             if 0 == tail_schema_encoding:
 
                 # Release locks and return
-                self.rw_locks[base_rid].release()
-                self.merge_lock.release()
+                release_all(locks)
+                # self.rw_locks[base_rid].release()
+                # self.merge_lock.release()
                 return False
 
             # Get base record indirection
@@ -313,8 +311,7 @@ class Table:
             base_enc_page.write_to_cell(bytes_to_write, base_enc_cell_idx)
             
             # Release locks and return
-            self.rw_locks[base_rid].release()
-            self.merge_lock.release()
+            release_all(locks)
             return True
 
     def select(self, key, query_columns):
@@ -341,17 +338,14 @@ class Table:
         while(1):
 
             # Start acquire lock ===========
+
             lock_attempts += 1
-            have_merge_lock = self.merge_lock.acquire(False)
-            if not have_merge_lock:
-                # print('Couldn\'t acquire merge lock.', 'Attempt', lock_attempts)
+            acquire_resp = acquire_all([self.merge_lock, self.rw_locks[rid]])
+            if acquire_resp is False:
                 continue
 
-            have_metarecord_lock = self.rw_locks[rid].acquire(False)
-            if not have_metarecord_lock:
-                self.merge_lock.release()
-                # print('Couldn\'t acquire metarecord lock.', 'Attempt', lock_attempts)
-                continue
+            locks = acquire_resp
+            
             # Acquired lock ===========
 
             base_record = self.page_directory[rid] # type: MetaRecord
@@ -392,8 +386,7 @@ class Table:
                     need[data_col_idx] = 0
 
             # Release locks and return
-            self.rw_locks[rid].release()
-            self.merge_lock.release()
+            release_all(locks)
             return resp
 
     def delete_record(self, key):
@@ -410,24 +403,14 @@ class Table:
         while(1):
 
             # Start acquire lock ===========
+
             lock_attempts += 1
-            have_merge_lock = self.merge_lock.acquire(False)
-            if not have_merge_lock:
-                # print('Couldn\'t acquire merge lock.', 'Attempt', lock_attempts)
+            acquire_resp = acquire_all([self.merge_lock, self.rw_locks[base_rid], self.del_locks[base_rid]])
+            if acquire_resp is False:
                 continue
 
-            have_metarecord_lock = self.rw_locks[base_rid].acquire(False)
-            if not have_metarecord_lock:
-                self.merge_lock.release()
-                # print('Couldn\'t acquire metarecord lock.', 'Attempt', lock_attempts)
-                continue
+            locks = acquire_resp
 
-            have_del_lock = self.del_locks[base_rid].acquire(False)
-            if not have_del_lock:
-                self.merge_lock.release()
-                self.rw_locks[base_rid].release()
-                # print('Couldn\'t acquire metarecord lock.', 'Attempt', lock_attempts)
-                continue
             # Acquired lock ===========
 
             base_record = self.page_directory[base_rid]  # type: MetaRecord
@@ -462,9 +445,7 @@ class Table:
                     new_tail_rid = int_from_bytes(new_tail_rid)
 
             # Release locks and return
-            self.del_locks[base_rid].release()
-            self.rw_locks[base_rid].release()
-            self.merge_lock.release()
+            release_all(locks)
             return True
 
         del self.del_locks[base_rid]
@@ -492,13 +473,12 @@ class Table:
                 curr_key += 1
                 continue
             if curr_rid == 0:
-                curr_key +=1 
+                curr_key += 1 
                 continue
             value = self.collapse_row(curr_key,query_columns)[aggregate_column_index]
             sum += value
             curr_key += 1
 
-        #print(sum)
         return sum
 
     def __merge(self):
