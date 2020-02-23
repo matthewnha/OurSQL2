@@ -3,11 +3,35 @@ from query import Query
 from time import process_time
 from random import choice, randrange
 
+from mergejob import MergeJob
+import threading
+import time
+
 # Student Id and 4 grades
 db = Database()
 grades_table = db.create_table('Grades', 5, 0)
 query = Query(grades_table)
 keys = []
+
+def merge_thread():
+    job = MergeJob(grades_table)
+    job.run()
+
+def schedule_merge():
+    while(1):
+        # print('Merge starting.')
+        start = process_time()
+
+        merge = threading.Thread(target=merge_thread, args=())
+        merge.start()
+        merge.join()
+
+        end = process_time()
+        # print('Merge done in', end-start)
+        time.sleep(5)
+
+scheduler = threading.Thread(target=schedule_merge, args=())
+scheduler.start()
 
 # Measuring Insert Performance
 insert_time_0 = process_time()
