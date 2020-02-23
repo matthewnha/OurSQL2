@@ -348,6 +348,7 @@ class Table:
             
             # Acquired lock ===========
 
+            # Reading base record
             base_record = self.page_directory[rid] # type: MetaRecord
             base_enc_pid = base_record.columns[SCHEMA_ENCODING_COLUMN]
             base_enc_bytes = self.read_pid(base_enc_pid)
@@ -361,19 +362,18 @@ class Table:
                 resp[data_col_idx] = int_from_bytes(data)
                 need[data_col_idx] = 0
 
-            curr_record = base_record
+            # get RID of next tail record
+            curr_indir_pid = base_record.columns[INDIRECTION_COLUMN]
+            next_rid = int_from_bytes(self.read_pid(curr_indir_pid))
 
-            while sum(need) != 0:
-                curr_indir_pid = curr_record.columns[INDIRECTION_COLUMN]
-                next_rid = self.read_pid(curr_indir_pid)
-                next_rid = int_from_bytes(next_rid)
+            # read tail records
+            while sum(need) != 0: #  todo: or indirection > tps or more?
                 curr_record = self.page_directory[next_rid]
 
                 curr_enc_pid = curr_record.columns[SCHEMA_ENCODING_COLUMN]
                 curr_enc_bytes = self.read_pid(curr_enc_pid)
                 curr_enc = int_from_bytes(curr_enc_bytes)
                 curr_enc_binary = bin(curr_enc)[2:].zfill(self.num_columns)
-                #print(next_rid, "next", curr_enc_pid, "schema", curr_enc_binary, "order")
 
                 for data_col_idx, is_updated in enumerate(curr_enc_binary):
                     #print("still needs",need,"curr schema",curr_enc_binary,"dex", data_col_idx, "at", is_updated)
@@ -385,9 +385,12 @@ class Table:
                     resp[data_col_idx] = data
                     need[data_col_idx] = 0
 
-            # Release locks and return
-            release_all(locks)
-            return resp
+                curr_indir_pid = curr_record.columns[INDIRECTION_COLUMN]
+                next_rid = int_from_bytes(self.read_pid(curr_indir_pid))
+
+                # Release locks and return
+                release_all(locks)
+                return resp
 
     def delete_record(self, key):
 
