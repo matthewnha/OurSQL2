@@ -2,9 +2,6 @@ from table import *
 from config import *
 from page import Page
 from util import *
-import logging
-import threading
-import time
 
 class MergeJob:
 
@@ -22,7 +19,7 @@ class MergeJob:
         for rid in range(1, self.copied_prev_rid+1):
             if rid not in self.table.page_directory:
                 continue
-            
+
             current_record = self.table.page_directory[rid].copy()
         
             for pid in current_record.columns:
