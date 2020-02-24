@@ -59,17 +59,8 @@ class Page:
         self.data[start:end] = bytes_to_write
         self.is_dirty = True
 
-    def add_pin(self):
-        self.pins += 1
-
-    def remove_pin(self):
-        if self.pins <= 0:
-            raise Exception("No Current Pins")
-        self.pins -= 1
-
-    
-    def read_tps(self):
-        return bytes(self.data[0:self.cellSize])
+    def read_tps(self) -> int:
+        return int_from_bytes(bytes(self.data[0:self.cellSize]))
 
 
     def read(self, cellIndex):
