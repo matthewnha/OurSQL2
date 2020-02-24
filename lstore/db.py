@@ -4,7 +4,7 @@ from config import *
 class Database():
 
     def __init__(self):
-        self.tables = []
+        self.tables = {}
         pass
 
     def open(self, path):

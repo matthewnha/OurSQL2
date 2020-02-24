@@ -391,7 +391,8 @@ class Table:
                         need[data_col_idx] = 0
                         continue
                     else:
-                        print('didn\'t skip')
+                        pass
+                        #print('didn\'t skip')
 
                     if is_updated == '0':
                         continue

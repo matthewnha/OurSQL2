@@ -3,12 +3,19 @@ from util import *
 
 class Page:
 
-    def __init__(self):
+    def __init__(self, is_importing = False):
         self.num_records = 0
-        self.data = bytearray(4096)
+        if is_importing:
+            self.data = None
+        else:
+            self.data = bytearray(4096)
         self.cellSize = (4096 // BLOCKS_PER_PAGE)
         self.is_dirty = False
 
+    def load(self, data):
+        if self.data == None:
+            self.data = data
+        pass
     def has_capacity(self):
         return self.num_records < (CELLS_PER_PAGE)
 
