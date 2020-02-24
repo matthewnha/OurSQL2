@@ -56,7 +56,7 @@ class Table:
         self.prev_tid = 2**64 - 1
         pass
 
-    def get_page(self, pid): # type: Page
+    def get_page(self, pid) -> Page: # type: Page
         cell_idx, page_idx, page_range_idx = pid
         page_range = self.page_ranges[page_range_idx] # type: PageRange
         page = page_range.get_page(page_idx) # type: Page
@@ -354,13 +354,20 @@ class Table:
             base_enc_bytes = self.read_pid(base_enc_pid)
             base_enc_binary = bin(int_from_bytes(base_enc_bytes))[2:].zfill(self.num_columns)
 
+            tps_all = resp.copy()
+
             for data_col_idx, is_dirty in enumerate(base_enc_binary):
-                if is_dirty == '1' or need[data_col_idx] == 0:
+                if need[data_col_idx] == 0:
                     continue
+
                 col_pid = base_record.columns[START_USER_DATA_COLUMN + data_col_idx]
+                tps = self.get_page(col_pid).read_tps()
+                tps_all[data_col_idx] = tps
+
                 data = self.read_pid(col_pid)
                 resp[data_col_idx] = int_from_bytes(data)
-                need[data_col_idx] = 0
+                if not is_dirty:
+                    need[data_col_idx] = 0
 
             # get RID of next tail record
             curr_indir_pid = base_record.columns[INDIRECTION_COLUMN]
@@ -376,9 +383,19 @@ class Table:
                 curr_enc_binary = bin(curr_enc)[2:].zfill(self.num_columns)
 
                 for data_col_idx, is_updated in enumerate(curr_enc_binary):
-                    #print("still needs",need,"curr schema",curr_enc_binary,"dex", data_col_idx, "at", is_updated)
-                    if is_updated == '0' or need[data_col_idx] == 0:
+                    if need[data_col_idx] == 0:
                         continue
+
+                    if next_rid <= tps_all[data_col_idx]:
+                        print('skipped bc merged')
+                        need[data_col_idx] = 0
+                        continue
+                    else:
+                        print('didn\'t skip')
+
+                    if is_updated == '0':
+                        continue
+
                     col_pid = curr_record.columns[START_USER_DATA_COLUMN + data_col_idx]
                     data = self.read_pid(col_pid)
                     data = int_from_bytes(data)

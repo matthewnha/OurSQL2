@@ -56,8 +56,8 @@ class Page:
         end = start + self.cellSize
         self.data[start:end] = bytes_to_write
 
-    def read_tps(self):
-        return bytes(self.data[0:self.cellSize])
+    def read_tps(self) -> int:
+        return int_from_bytes(bytes(self.data[0:self.cellSize]))
 
 
     def read(self, cellIndex):
