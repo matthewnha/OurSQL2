@@ -367,7 +367,7 @@ class Table:
                 data = self.read_pid(col_pid)
                 resp[data_col_idx] = int_from_bytes(data)
 
-                if not is_dirty:
+                if is_dirty == '0':
                     need[data_col_idx] = 0
 
             # get RID of next tail record
@@ -390,11 +390,11 @@ class Table:
                     if is_updated == '0':
                         continue
                     
-                    if next_rid <= tps_all[data_col_idx]:
-                        print('skipped bc merged')
+                    if next_rid >= tps_all[data_col_idx]:
                         need[data_col_idx] = 0
                         continue
 
+                    # print('LOOKED AT TAIL')
 
                     col_pid = curr_record.columns[START_USER_DATA_COLUMN + data_col_idx]
                     data = self.read_pid(col_pid)
@@ -402,11 +402,12 @@ class Table:
                     resp[data_col_idx] = data
                     need[data_col_idx] = 0
 
-                curr_indir_pid = curr_record.columns[INDIRECTION_COLUMN]
-                next_rid = int_from_bytes(self.read_pid(curr_indir_pid))
+                if sum(need) != 0:
+                    curr_indir_pid = curr_record.columns[INDIRECTION_COLUMN]
+                    next_rid = int_from_bytes(self.read_pid(curr_indir_pid))
 
-                if next_rid == rid: # if next rid is base
-                    raise Exception('Came back to original')
+                    if next_rid == rid: # if next rid is base
+                        raise Exception("Came back to original, didn't get all we needed")
 
             # Release locks and return
             release_all(locks)
