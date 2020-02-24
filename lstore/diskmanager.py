@@ -8,10 +8,10 @@ class DiskManager:
         self.metafile = ""
         pass
 
-    def write_to_disk(self,page_pid):
+    def write_to_disk(self, path, page_pid):
         pass
 
-    def load_from_disk(self,path,page_pid):
+    def load_from_disk(self, path, page_pid):
         pass
 
     def open_db(self, ):

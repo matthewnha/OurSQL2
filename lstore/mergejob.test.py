@@ -28,7 +28,7 @@ def schedule_merge():
 
         end = time.mktime(time.localtime())
         # print('Merge done in', time.strftime("%X", time.localtime(end-start)))
-        time.sleep(1)
+        time.sleep(5)
 
 scheduler = threading.Thread(target=schedule_merge, args=())
 scheduler.start()

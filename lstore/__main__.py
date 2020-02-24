@@ -28,10 +28,10 @@ def schedule_merge():
 
         end = process_time()
         # print('Merge done in', end-start)
-        time.sleep(5)
+        time.sleep(10)
 
-scheduler = threading.Thread(target=schedule_merge, args=())
-scheduler.start()
+# scheduler = threading.Thread(target=schedule_merge, args=())
+# scheduler.start()
 
 # Measuring Insert Performance
 insert_time_0 = process_time()
