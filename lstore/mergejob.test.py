@@ -21,7 +21,6 @@ def merge_thread():
     job.run()
 
 def schedule_merge():
-    time.sleep(5)
     while(1):
         # print('Merge starting.')
         start = time.mktime(time.localtime())
@@ -34,7 +33,7 @@ def schedule_merge():
 
         end = time.mktime(time.localtime())
         # print('Merge done in', time.strftime("%X", time.localtime(end-start)))
-        time.sleep(10)
+        time.sleep(1)
 
         if stop:
             return
@@ -44,7 +43,7 @@ scheduler.start()
 
 print('START FIRST SELECT')
 query.insert(9399395, 5, 6, 7, 8)
-for i in range(30):
+for i in range(100):
 
     # select
     start = time.mktime(time.localtime())
@@ -66,7 +65,7 @@ for i in range(30):
     expected[col] = val
     print('{0:>20} : {1:<10}'.format('EXPECTED', str(expected)))
 
-    time.sleep(1)
+    time.sleep(0.1)
 
 stop = True
 print('END FIRST SELECT')
