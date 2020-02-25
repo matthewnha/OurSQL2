@@ -14,6 +14,8 @@ class PageRange:
         self.tail_pages = []
         self.base_page_count = 0
         self.tail_page_count = 0
+        self.pagerange_id = 0
+
 
     def has_open_base_pages(self):
         return self.base_page_count < PAGE_RANGE_MAX_BASE_PAGES

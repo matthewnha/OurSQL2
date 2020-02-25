@@ -14,7 +14,7 @@ class Page:
     def load(self, data):
         if self.data == None:
             self.data = data
-        pass
+
     def has_capacity(self):
         return self.num_records < (CELLS_PER_PAGE)
 

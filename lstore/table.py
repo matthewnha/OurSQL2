@@ -43,7 +43,7 @@ class Table:
 
         self.page_ranges = []
 
-        self.page_directory = {}
+        self.page_directory = {} # key is rid 
         self.rw_locks = {} # only base records for now
         self.del_locks = {}
 
