@@ -1,12 +1,13 @@
 from config import *
 from util import *
-from table import Table
+from table import *
 from db import Database
 from pagerange import PageRange
 from page import Page
 
 PAGE_OFFSET = 1
 PAGE_RANGE_OFFSET = 2
+NUMBER_OF_DEXS = 3
 
 class DiskManager:
 
@@ -48,23 +49,58 @@ class DiskManager:
 
             data += self.separator
 
+    def import_table(self, table):
+        binary_file = open(self.database_folder + table.name + "_meta", 'r+b')
+
+        data = bytearray(binary_file.read())
+
+        current = 0
+        table.prev_rid = int_from_bytes(data[current : current + CELL_SIZE_BYTES - 1])
+
+        current += CELL_SIZE_BYTES
+        table.prev_tid = int_from_bytes(data[current : current + CELL_SIZE_BYTES - 1])
+
+        current += CELL_SIZE_BYTES
+        page_directory_size = int_from_bytes(data[current : current + CELL_SIZE_BYTES - 1])
+
+        for i in range(page_directory_size):
+            current += CELL_SIZE_BYTES
+            key = int_from_bytes(data[current : current + CELL_SIZE_BYTES - 1])
+
+            columns = []
+            for i in range(table.num_total_columns):
+                column = []
+
+                for i in range(NUMBER_OF_DEXS):
+                    current += CELL_SIZE_BYTES
+                    column.append(int_from_bytes(data[current : current + CELL_SIZE_BYTES - 1]))
+
+                columns.append(column)
+            value = MetaRecord(key,columns[table.key_col],columns)
+
+            table.page_directory[key] = value
+        
+        return table
+
+        pass
 # Give table by name
-    def write_table_meta(self, table):
+    def write_table_meta(self, table_name):
         try:  
-            write_table = self.table[table]
+            table = self.table[table]
         except KeyError:
             return False
 
         try:
-            binary_file = open(self.database_folder + write_table.name + "_meta", 'w+b')
+            binary_file = open(self.database_folder + table.name + "_meta", 'w+b')
         except FileNotFoundError:
             return False
         data = bytearray()
         data += int_to_bytes(table.prev_rid) # rid
         data += int_to_bytes(table.prev_tid) # tid
+        data += int_to_bytes(len(table.page_directory))
         # key is the rid and value are the metarecords
         # columns point to the location in data
-        for key, value in self.table.page_directory.items(): 
+        for key, value in self.table.page_directory.items():
             data += int_to_bytes(key)
 
             for column in value.column:
@@ -134,12 +170,6 @@ class DiskManager:
         binary_file.close()
 
     def import_from_disk(self):
-        pass
-
-    def import_table(self, table):
-        pass
-
-    def import_table_meta(self, table):
         pass
 
     def import_page(self, pagerange, inner_page_idx, base_or_tail, table_folder, page = Page(True)):
