@@ -9,7 +9,7 @@ class MergeJob:
         self.copied_metarecords = {} # key to metarecord
         self.copied_base_pages = {} # (inner, pr) to page
         self.copied_prev_rid = None
-        self.min_tid = 2**64 - 1
+        self.min_tid = RESERVED_TID
         self.table = table # type: Table
 
     def copy_data(self):
@@ -54,6 +54,8 @@ class MergeJob:
         page = self.copied_base_pages[(inner_idx, range_idx)] # type: Page
         bytes_to_write = int_to_bytes(data)
         page.write_to_cell(bytes_to_write, cell_idx)
+        self.copied_base_pages[(inner_idx, range_idx)] = page
+        # print('')
 
     def collapse_record(self, rid):
         base_record = self.copied_metarecords[rid] # type: MetaRecord
@@ -65,13 +67,20 @@ class MergeJob:
         base_enc = self.read_copied_by_pid_as_int(base_enc_pid)
         base_enc_binary = bin(base_enc)[2:].zfill(self.table.num_columns)
 
+        tps_all = resp.copy()
+
         for data_col_idx, is_dirty in enumerate(base_enc_binary):
-            if is_dirty == '1' or need[data_col_idx] == 0:
+            if need[data_col_idx] == 0:
                 continue
             col_pid = base_record.columns[START_USER_DATA_COLUMN + data_col_idx]
+            tps = self.table.get_page(col_pid).read_tps()
+            tps_all[data_col_idx] = tps
+
             data = self.read_copied_by_pid(col_pid)
             resp[data_col_idx] = int_from_bytes(data)
-            need[data_col_idx] = 0
+
+            if is_dirty == '0':
+                need[data_col_idx] = 0
 
         # get RID of next tail record
         curr_indir_pid = base_record.columns[INDIRECTION_COLUMN]
@@ -88,24 +97,36 @@ class MergeJob:
             curr_enc_binary = bin(curr_enc)[2:].zfill(self.table.num_columns)
 
             for data_col_idx, is_updated in enumerate(curr_enc_binary):
-                #print("still needs",need,"curr schema",curr_enc_binary,"dex", data_col_idx, "at", is_updated)
-                if is_updated == '0' or need[data_col_idx] == 0:
+                if need[data_col_idx] == 0:
                     continue
+
+                if is_updated == '0':
+                    continue
+                
+                if next_rid >= tps_all[data_col_idx]:
+                    need[data_col_idx] = 0
+                    continue
+
                 col_pid = curr_record.columns[START_USER_DATA_COLUMN + data_col_idx]
                 data = self.table.read_pid(col_pid)
                 data = int_from_bytes(data)
                 resp[data_col_idx] = data
                 need[data_col_idx] = 0
 
-            curr_indir_pid = curr_record.columns[INDIRECTION_COLUMN]
-            next_rid = int_from_bytes(self.table.read_pid(curr_indir_pid))
+            if sum(need) != 0:
+                curr_indir_pid = curr_record.columns[INDIRECTION_COLUMN]
+                next_rid = int_from_bytes(self.table.read_pid(curr_indir_pid))
 
+                if next_rid == rid: # if next rid is base
+                    raise Exception("Came back to original, didn't get all we needed")
+
+        # print('\tresp', resp)
         return [base_record, resp]
 
     def write_collapsed_pages(self, base_record, data_cols):
         
         for i, data in enumerate(data_cols):
-            pid = base_record.columns[START_USER_DATA_COLUMN + 1]
+            pid = base_record.columns[START_USER_DATA_COLUMN + i]
             self.write_to_copied_by_pid(pid, data)
 
     def write_tps_to_all(self):
@@ -115,10 +136,18 @@ class MergeJob:
 
     def load_into_table(self, merged_record):
         og_record = self.table.page_directory[merged_record.rid]
-        og_metacolumns  = og_record.columns[0:START_USER_DATA_COLUMN]
         merged_data_cols = merged_record.columns[START_USER_DATA_COLUMN:]
-        merged_record.columns = og_metacolumns + merged_data_cols
-        self.table.page_directory[merged_record.rid] = merged_record
+
+        for i, pid in enumerate(merged_data_cols):
+            cell_idx, inner_idx, range_idx = pid
+            new_page = self.copied_base_pages[(inner_idx, range_idx)]
+            og_page = self.table.get_page(pid)
+            og_page.data = new_page.data
+            # print('')
+
+        # og_metacolumns  = og_record.columns[0:START_USER_DATA_COLUMN]
+        # merged_record.columns = og_metacolumns + merged_data_cols
+        # self.table.page_directory[merged_record.rid] = merged_record
 
     def run(self):
         
@@ -168,3 +197,4 @@ class MergeJob:
 
                 # Release lock
                 release_all(locks)
+                break
