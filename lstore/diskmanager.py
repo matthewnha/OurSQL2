@@ -3,6 +3,7 @@ from util import *
 from table import Table, MetaRecord
 from pagerange import PageRange
 from page import Page
+import os
 
 PAGE_OFFSET = 1
 PAGE_RANGE_OFFSET = 2
@@ -12,13 +13,12 @@ class DiskManager:
 
     def __init__(self,  dir = "."):
         self.files = []
-        self.my_database = None# type : db
+        self.my_database = None # type : db
         self.page_ranges = []
-        self.separator = int_to_bytes(int_from_bytes('NewTable'.encode('utf-8')))
         self.database_folder = dir + '/'
 
     # Todo
-    def write_to_disk(self, table_name, path, page_pid):
+    def write_to_disk(self, table_name, page_pid):
         _, page_idx, page_range_idx = page_pid
         try:
             current_table = self.my_database.tables[table_name] # type: Table
@@ -36,6 +36,15 @@ class DiskManager:
         self.write_page(pagerange, page, page_idx, type_of_page, table_name)
         pass
 
+    def make_table_folder(self, table_name):
+        path = self.database_folder + '/' + table_name
+        access_rights = 0o755
+        try:
+            os.mkdir(path, access_rights)
+        except OSError:
+            print ("Creation of the directory %s failed" % path)
+        else:
+            print ("Successfully created the directory %s" % path)
     # Todo
     def load_from_disk(self, path, page_pid):
         pass
@@ -75,6 +84,7 @@ class DiskManager:
         data = bytearray()
 
         data += int_to_bytes(len(self.my_database.tables))
+        self.separator = int_to_bytes(int_from_bytes('NewTable'.encode('utf-8')))
 
         for name, table in self.my_database.tables.items():
             data += int_to_bytes(len(name.encode('utf-8'))) + name.encode('utf-8')
@@ -106,6 +116,10 @@ class DiskManager:
                 self.write_page_range(pagerange,table_name)
         
     # Todo
+    def purge_table(self, table_name):
+        pass
+
+    # Todo
     def purge(self):
         pass
 
@@ -133,7 +147,7 @@ class DiskManager:
 
     def import_table(self, table):
 
-        meta_file = open('./database_files/' + name + '_meta', 'r+b')
+        meta_file = open('./database_files/' + '/' + table.name + '/' + '_meta', 'r+b')
         table.prev_rid = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
         table.prev_tid = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
         page_directory_size = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
@@ -166,6 +180,8 @@ class DiskManager:
 
             # Read columns of tail record
             else:
+
+                # Tells which columnbs to skip
                 schema = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
                 schema_encoding = bin(schema)[2:].zfill(table.num_columns)[::-1]
 
@@ -182,7 +198,6 @@ class DiskManager:
 
 
             metarecord = MetaRecord(rid,key,columns)
-
             table.page_directory[rid] = metarecord
 
         meta_file.close()
@@ -197,9 +212,11 @@ class DiskManager:
             return False
 
         try:
-            binary_file = open(self.database_folder + table.name + "_meta", 'w+b')
+            binary_file = open(self.database_folder + '/' + table_name + '/' + table_name + "_meta", 'w+b')
         except FileNotFoundError:
-            return False
+            self.make_table_folder(table_name)
+            binary_file = open(self.database_folder + '/' + table_name + '/' + table_name + "_meta", 'w+b')
+
         data = bytearray()
 
         #
@@ -234,7 +251,7 @@ class DiskManager:
             data += int_to_bytes(current_rid)
             data += int_to_bytes(current_record.key)
 
-            # Write columns
+            # Write columns of base record
             if not tail_flag:
 
                 for column in current_record.columns:
@@ -242,6 +259,7 @@ class DiskManager:
                     for dex in column:
                         data += int_to_bytes(dex)
 
+            # Write columns of tail record
             else:
                 the_columns = bytearray()
                 schema = 0
@@ -249,17 +267,14 @@ class DiskManager:
                 for i, column in enumerate(current_record.columns):
 
                     if column == None:
-                        # the_columns += bytearray(CELL_SIZE_BYTES * 3)
-                        # for _ in range(3):
-                        #     the_columns += int_to_bytes(0)
-                        print('col None')
                         continue
                     else:
                         if i >= START_USER_DATA_COLUMN:
                             schema += 2**(i - START_USER_DATA_COLUMN)
                         for dex in column:
                             the_columns += int_to_bytes(dex)
-                
+
+                # Tells import_table which columns to ignore
                 schema = int_to_bytes(schema)
 
 
@@ -273,11 +288,13 @@ class DiskManager:
         return True
 
     # Todo
-    def write_page_range(self, pagerange, table_folder):
+    def write_page_range(self, pagerange, table_name):
+        print("Here")
         try:
-            binary_file = open(self.database_folder + "/" + table_folder + "/" + "pagerange_" + str(pagerange.pagerange_id), "w+b")
+            binary_file = open(self.database_folder + "/" + table_name + "/" + "pagerange_" + str(pagerange.pagerange_id), "w+b")
         except FileNotFoundError:
             return False
+
         data = bytearray()
 
         data += int_to_bytes(pagerange.base_page_count) # base page count first
@@ -297,13 +314,15 @@ class DiskManager:
         data += tail_string
 
         for page in pagerange.tail_pages:
-            data += int_to_bytes(page.num_records)
-            data += page.data
+            if page != None:
+                data += int_to_bytes(page.num_records)
+                data += page.data
 
         binary_file.write(data)
         binary_file.close()
 
-    # def write_page_range_meta(self, pagerange):
+        return True
+
     # Todo
     def write_page(self, pagerange, page, inner_page_idx, base_or_tail, table_folder):
         if page.data == None:
@@ -330,7 +349,7 @@ class DiskManager:
         binary_file.write(page.data)
         binary_file.close()
 
-
+    # Todo
     def import_page(self, pagerange, inner_page_idx, base_or_tail, table_folder, page = Page(True)):
         try:
             binary_file = open(self.database_folder + "/" + table_folder + "/" + "pagerange_" + pagerange.pagerange_id, 'r+b')
@@ -355,6 +374,7 @@ class DiskManager:
 
         return page
 
+    #Todo
     def import_page_ranges(self, pagerange_num, table_folder, pagerange = PageRange(0)):
 
         try:
@@ -397,8 +417,4 @@ class DiskManager:
         binary_file.close()
 
         return pagerange
-        # current += CELL_SIZE_BYTES * (PAGE_RANGE_OFFSET + 1)
-        # not sure to import whole page range
 
-    # def import_page_range_meta(self):
-    #     pass

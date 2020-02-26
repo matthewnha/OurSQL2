@@ -58,7 +58,12 @@ db.my_manager.write_db_directory()
 for key in db.tables.keys():
     print(key, "Table")
     db.my_manager.write_table_meta(key)
-    table = db.tables[key]
+    table = db.tables[key] # type : Table
+    print("Num pageranges",len(table.page_ranges))
+    for pr in table.page_ranges:
+        print("love")
+        db.my_manager.write_page_range(pr,key)
 
 
-filereader.read_files()
+copy_table = filereader.read_files()
+
