@@ -9,12 +9,12 @@ from page import Page
   
 class PageRange:
 
-    def __init__(self):
+    def __init__(self, num):
         self.base_pages = [None for _ in range(PAGE_RANGE_MAX_BASE_PAGES)]
         self.tail_pages = []
         self.base_page_count = 0
         self.tail_page_count = 0
-        self.pagerange_id = 0
+        self.pagerange_id = num
 
 
     def has_open_base_pages(self):

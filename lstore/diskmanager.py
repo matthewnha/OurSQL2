@@ -1,6 +1,6 @@
 from config import *
 from util import *
-from table import *
+from table import Table, MetaRecord
 from db import Database
 from pagerange import PageRange
 from page import Page
@@ -21,33 +21,70 @@ class DiskManager:
     def write_to_disk(self, path, page_pid):
         pass
 
+    # def import_from_disk(self):
+    #     pass
+
     def load_from_disk(self, path, page_pid):
         pass
 
     def open_db(self, database):
-        pass
+        database_directory_file = open(self.database_folder + "Database_Directory", 'r+b')
 
-    def close_db(self, database):
-        pass
+        num_of_tables = int_from_bytes(database_directory_file.read(CELL_SIZE_BYTES))
 
-    def purge(self):
-        pass
+        for i in range(num_of_tables):
+            table_name_len = int_to_bytes(database_directory_file.read(CELL_SIZE_BYTES))
+            table_name = database_directory_file.read(table_name_len)
+            key_col = database_directory_file.read(CELL_SIZE_BYTES)
+            num_columns = database_directory_file.read(CELL_SIZE_BYTES)
+
+            new_table = Table(table_name,num_columns,key_col)
+            self.import_table(new_table)
+
+            num_page_ranges = database_directory_file.read(CELL_SIZE_BYTES)
+
+            for i in range(num_page_ranges):
+                pagerange_id = database_directory_file.read(CELL_SIZE_BYTES)
+
+                self.import_page_ranges(pagerange_id, table_name)
+
 
     def write_db_directory(self):
         binary_file = open(self.database_folder + "Database_Directory", 'w+b')
 
         data = bytearray()
-        for key, value in self.my_database.tables.items():
-            data += int_to_bytes(len(key.encode('utf-8'))) + key.encode('utf-8')
 
-            data += int_to_bytes(value.key_col)
+        data += int_to_bytes(len(self.my_database.tables))
+
+        for name, table in self.my_database.tables.items():
+            data += int_to_bytes(len(name.encode('utf-8'))) + name.encode('utf-8')
+
+            data += int_to_bytes(table.key_col)
             
-            data += int_to_bytes(value.num_columns)
+            data += int_to_bytes(table.num_columns)
 
-            for pagerange in value.page_ranges:
+            data += int_from_bytes(len(table.page_ranges))
+            for pagerange in table.page_ranges:
                 data += int_to_bytes(pagerange.pagerange_id)
 
+                self.import_page_ranges()
+
             data += self.separator
+
+    def close_db(self, database):
+        self.write_db_directory()
+
+
+        for table_name, table in self.my_dictionary.tables.items():
+            self.write_table_meta(table_name)
+
+            for pagerange in table.page_ranges:
+                self.write_page_range(pagerange,table_name)
+        pass
+
+    def purge(self):
+        pass
+
 
     def import_table(self, table):
         binary_file = open(self.database_folder + table.name + "_meta", 'r+b')
@@ -86,7 +123,7 @@ class DiskManager:
 # Give table by name
     def write_table_meta(self, table_name):
         try:  
-            table = self.table[table]
+            table = self.my_dictionary.table[table]
         except KeyError:
             return False
 
@@ -169,8 +206,6 @@ class DiskManager:
         binary_file.write(page.data)
         binary_file.close()
 
-    def import_from_disk(self):
-        pass
 
     def import_page(self, pagerange, inner_page_idx, base_or_tail, table_folder, page = Page(True)):
         try:
@@ -195,10 +230,10 @@ class DiskManager:
 
         return page
 
-    def import_page_ranges(self, pagerange_num, pagerange = PageRange()):
+    def import_page_ranges(self, pagerange_num, table_folder, pagerange = PageRange()):
 
         try:
-            binary_file = open(self.database_folder + "pagerange_" + pagerange_num, 'r+b')
+            binary_file = open(self.database_folder + "/" + table_folder + "/" + "pagerange_" + str(pagerange_num), "r+b")
         except FileNotFoundError:
             return False
 
