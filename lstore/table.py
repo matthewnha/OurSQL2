@@ -8,7 +8,7 @@ from index import Index
 from config import *
 from util import *
 
-from diskmanager import DiskManager
+# from diskmanager import DiskManager
 from bufferpool import BufferPool
 
 
@@ -382,11 +382,9 @@ class Table:
             # get RID of next tail record
             curr_indir_pid = base_record.columns[INDIRECTION_COLUMN]
             next_rid = int_from_bytes(self.read_pid(curr_indir_pid))
-
             # read tail records
-            while sum(need) != 0: #  todo: or indirection > tps or more?
+            while sum(need) != 0 and next_rid < tps: #  todo: or indirection > tps or more?
                 curr_record = self.page_directory[next_rid]
-
                 curr_enc_pid = curr_record.columns[SCHEMA_ENCODING_COLUMN]
                 curr_enc_bytes = self.read_pid(curr_enc_pid)
                 curr_enc = int_from_bytes(curr_enc_bytes)

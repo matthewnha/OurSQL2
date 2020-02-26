@@ -1,5 +1,7 @@
 from config import *
 from util import *
+from page_rw_utils import *
+from table import MetaRecord, Table
 from pagerange import PageRange
 from page import Page
 import os
@@ -17,8 +19,14 @@ class DiskManager:
         self.database_folder = dir + '/'
         access_rights = 0o755
 
+        path_list = self.database_folder.split('/')
+        if path_list[0] == '~':
+            path_list[0] = os.getenv('HOME')
+        self.database_folder = '/'.join(path_list)
+
+        print(self.database_folder)
         try:
-            os.mkdir(self.database_folder, access_rights)
+            os.mkdir(self.database_folder)
         except OSError:
             print ("Creation of the directory %s failed" % self.database_folder)
         else:
@@ -58,31 +66,36 @@ class DiskManager:
 
 
     def open_db(self):
-        database_directory_file = open(self.database_folder + "Database_Directory", 'r+b')
+        try: 
+            database_directory_file = open(self.database_folder + "Database_Directory", 'r+b')
+        except FileNotFoundError:
+            return False
 
         num_of_tables = int_from_bytes(database_directory_file.read(CELL_SIZE_BYTES))
 
         for i in range(num_of_tables):
-            table_name_len = int_to_bytes(database_directory_file.read(CELL_SIZE_BYTES))
-            table_name = database_directory_file.read(table_name_len)
-            key_col = database_directory_file.read(CELL_SIZE_BYTES)
-            num_columns = database_directory_file.read(CELL_SIZE_BYTES)
+            table_name_len = int_from_bytes(database_directory_file.read(CELL_SIZE_BYTES))
+            table_name = database_directory_file.read(table_name_len).decode('utf-8')
+            key_col = int_from_bytes(database_directory_file.read(CELL_SIZE_BYTES))
+            num_columns = int_from_bytes(database_directory_file.read(CELL_SIZE_BYTES))
 
             new_table = Table(table_name,num_columns,key_col)
             self.import_table(new_table) # type : Table
 
-            num_page_ranges = database_directory_file.read(CELL_SIZE_BYTES)
-            table.num_page_ranges = [None]*num_page_ranges
+            num_page_ranges = int_from_bytes(database_directory_file.read(CELL_SIZE_BYTES))
+            new_table.page_ranges = [None]*num_page_ranges
 
             for i in range(num_page_ranges):
                 pagerange_id = int_from_bytes(database_directory_file.read(CELL_SIZE_BYTES))
 
                 new_table.page_ranges[pagerange_id] = self.import_page_ranges(pagerange_id, table_name)
-                print(database_directory_file.read(CELL_SIZE_BYTES).decode('utf-8'))
 
             self.my_database.tables[table_name] = new_table
+            print(database_directory_file.read(CELL_SIZE_BYTES).decode('utf-8'))
         
         database_directory_file.close()
+
+        return True
 
 
     def write_db_directory(self):
@@ -112,15 +125,16 @@ class DiskManager:
         binary_file.close()
 
     # Todo
-    def close_db(self, database):
+    def close_db(self):
         self.write_db_directory()
 
 
-        for table_name, table in self.my_dictionary.tables.items():
+        for table_name, table in self.my_database.tables.items():
             self.write_table_meta(table_name)
 
             for pagerange in table.page_ranges:
                 self.write_page_range(pagerange,table_name)
+        del self.my_database
         
     # Todo
     def purge_table(self, table_name):
@@ -153,8 +167,11 @@ class DiskManager:
     """
 
     def import_table(self, table):
+        try:
+            meta_file = open(self.database_folder + table.name + '/' + table.name + '_meta', 'r+b')
+        except FileNotFoundError:
+            return False
 
-        meta_file = open('./database_files/' + '/' + table.name + '/' + '_meta', 'r+b')
         table.prev_rid = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
         table.prev_tid = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
         page_directory_size = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
@@ -219,7 +236,7 @@ class DiskManager:
             return False
 
         try:
-            binary_file = open(self.database_folder + '/' + table_name + '/' + table_name + "_meta", 'w+b')
+            binary_file = open(self.database_folder + table_name + '/' + table_name + "_meta", 'w+b')
         except FileNotFoundError:
             self.make_table_folder(table_name)
             binary_file = open(self.database_folder + '/' + table_name + '/' + table_name + "_meta", 'w+b')
