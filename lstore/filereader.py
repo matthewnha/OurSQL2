@@ -12,24 +12,24 @@ def read_files():
     length = len(file.read())
 
     file.seek(0,0)
-    print(int_from_bytes(file.read(CELL_SIZE_BYTES)))
+    # print(int_from_bytes(file.read(CELL_SIZE_BYTES)))
     i = 0
     while (i < length - CELL_SIZE_BYTES):
         if i == 0:
             name_len = int_from_bytes(file.read(CELL_SIZE_BYTES))
             name = bytearray(file.read(name_len)).decode('utf-8')
-            print(name_len, "Length", name, "Name")
+            # print(name_len, "Length", name, "Name")
 
             key_col = int_from_bytes(file.read(CELL_SIZE_BYTES))
             num_columns = int_from_bytes(file.read(CELL_SIZE_BYTES))
             i += CELL_SIZE_BYTES * 6
-            print("The key is", key_col, "columns", num_columns)
-            print("Number of page ranges is",int_from_bytes(file.read(CELL_SIZE_BYTES)))
+            # print("The key is", key_col, "columns", num_columns)
+            # print("Number of page ranges is",int_from_bytes(file.read(CELL_SIZE_BYTES)))
         else:
-            print("PageRange ID",int_from_bytes(file.read(CELL_SIZE_BYTES)))
+            # print("PageRange ID",int_from_bytes(file.read(CELL_SIZE_BYTES)))
             i += CELL_SIZE_BYTES
 
-    print(file.read(CELL_SIZE_BYTES).decode('utf-8'))
+    # print(file.read(CELL_SIZE_BYTES).decode('utf-8'))
 
     table = Table('Grades',5,0)
 
@@ -56,7 +56,7 @@ def read_files():
             - Schema
             - Columns
     """
-    meta_file = open('./database_files/' + name + '_meta', 'r+b')
+    meta_file = open('./database_files/' + name + '/' + name +'/'+ '_meta', 'r+b')
     table.prev_rid = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
     table.prev_tid = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
     page_directory_size = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))

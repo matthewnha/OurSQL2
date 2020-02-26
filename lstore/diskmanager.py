@@ -16,6 +16,14 @@ class DiskManager:
         self.my_database = None # type : db
         self.page_ranges = []
         self.database_folder = dir + '/'
+        access_rights = 0o755
+
+        try:
+            os.mkdir(self.database_folder, access_rights)
+        except OSError:
+            print ("Creation of the directory %s failed" % self.database_folder)
+        else:
+            print ("Successfully created the directory %s" % self.database_folder)
 
     # Todo
     def write_to_disk(self, table_name, page_pid):
@@ -289,7 +297,7 @@ class DiskManager:
 
     # Todo
     def write_page_range(self, pagerange, table_name):
-        print("Here")
+        # print("Here")
         try:
             binary_file = open(self.database_folder + "/" + table_name + "/" + "pagerange_" + str(pagerange.pagerange_id), "w+b")
         except FileNotFoundError:
