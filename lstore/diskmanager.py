@@ -1,7 +1,6 @@
 from config import *
 from util import *
 from table import Table, MetaRecord
-from db import Database
 from pagerange import PageRange
 from page import Page
 
@@ -11,9 +10,9 @@ NUMBER_OF_DEXS = 3
 
 class DiskManager:
 
-    def __init__(self, my_database = db(), dir = "."):
+    def __init__(self,  dir = "."):
         self.files = []
-        self.database = my_database
+        self.my_database = None# type : db
         self.page_ranges = []
         self.separator = int_to_bytes(int_from_bytes('NewTable'.encode('utf-8')))
         self.database_folder = dir + '/'
@@ -51,16 +50,18 @@ class DiskManager:
             num_columns = database_directory_file.read(CELL_SIZE_BYTES)
 
             new_table = Table(table_name,num_columns,key_col)
-            self.import_table(new_table)
+            self.import_table(new_table) # type : Table
 
             num_page_ranges = database_directory_file.read(CELL_SIZE_BYTES)
+            table.num_page_ranges = [None]*num_page_ranges
 
             for i in range(num_page_ranges):
-                pagerange_id = database_directory_file.read(CELL_SIZE_BYTES)
+                pagerange_id = int_from_bytes(database_directory_file.read(CELL_SIZE_BYTES))
 
-                self.import_page_ranges(pagerange_id, table_name)
-
+                new_table.page_ranges[pagerange_id] = self.import_page_ranges(pagerange_id, table_name)
                 print(database_directory_file.read(CELL_SIZE_BYTES).decode('utf-8'))
+
+            self.my_database.tables[table_name] = new_table
 
 
     def write_db_directory(self):
@@ -261,7 +262,9 @@ class DiskManager:
         try: 
             base_string = binary_file.read(CELL_SIZE_BYTES).decode('utf-8')
             print(base_string)
-        
+        except:
+            print("UGG")
+
         if base_string == 'basedata':
             print("Success")
         else:
@@ -272,6 +275,8 @@ class DiskManager:
             binary_file.seek(current)
             tail_string = binary_file.read(CELL_SIZE_BYTES).decode('utf-8')
             print(tail_string)
+        except:
+            print("UGG")
 
         if tail_string == 'taildata':
             print("TSuccess")

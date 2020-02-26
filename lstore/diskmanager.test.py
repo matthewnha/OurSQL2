@@ -1,12 +1,12 @@
 from db import Database
+from diskmanager import DiskManager
 from query import Query
-from config import init
+from config import *
 
 from random import choice, randint, sample, seed
 from colorama import Fore, Back, Style
 
 # Student Id and 4 grades   
-init()
 db = Database()
 grades_table = db.create_table('Grades', 5, 0)
 query = Query(grades_table)

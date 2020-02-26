@@ -9,7 +9,7 @@ from page import Page
   
 class PageRange:
 
-    def __init__(self, num):
+    def __init__(self, num = 0):
         self.base_pages = [None for _ in range(PAGE_RANGE_MAX_BASE_PAGES)]
         self.tail_pages = []
         self.base_page_count = 0

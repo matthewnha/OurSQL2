@@ -9,7 +9,8 @@ class Page:
             self.data = None
         else:
             self.data = bytearray(4096)
-        self.write_tps(RESERVED_TID)
+            self.write_tps(RESERVED_TID)
+        
 
     def load(self, data):
         if self.data == None:
