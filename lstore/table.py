@@ -1,12 +1,16 @@
+import time
+import threading
+from math import ceil, floor
+
 from page import *
 from pagerange import PageRange
 from index import Index
-from time import time
 from config import *
-from math import ceil, floor
 from util import *
-import time
-import threading
+
+from diskmanager import DiskManager
+from bufferpool import BufferPool
+
 
 class MetaRecord:
 
@@ -34,26 +38,28 @@ class Table:
     :param key: int             #Index of table key in columns
     """
     def __init__(self, name, num_columns, key_col):
+        
         self.name = name
         self.key_col = key_col
         self.num_columns = num_columns
-        self.num_sys_columns = 4
-        self.num_total_cols = self.num_sys_columns + self.num_columns
+        self.num_sys_columns = 4 # Don't export
+        self.num_total_cols = self.num_sys_columns + self.num_columns # Don't export
         self.num_rows = 0
 
         self.page_ranges = []
 
         self.page_directory = {}
-        self.rw_locks = {} # only base records for now
-        self.del_locks = {}
+        self.rw_locks = {} # only base records for now # Don't export
+        self.del_locks = {} # Don't export
 
-        self.merge_lock = threading.Lock()
-
-        self.key_index = {} # key -> base MetaRecord PID
-        self.index = Index(self)
+        self.merge_lock = threading.Lock() # Don't export
 
         self.prev_rid = 0
         self.prev_tid = 2**64 - 1
+
+        self.key_index = {} # key -> base MetaRecord PID # Don't export
+        self.index = Index(self) # Don't export
+
         pass
 
     def get_page(self, pid) -> Page: # type: Page
@@ -367,7 +373,7 @@ class Table:
                 data = self.read_pid(col_pid)
                 resp[data_col_idx] = int_from_bytes(data)
 
-                if not is_dirty:
+                if is_dirty == '0':
                     need[data_col_idx] = 0
 
             # get RID of next tail record
@@ -390,11 +396,11 @@ class Table:
                     if is_updated == '0':
                         continue
                     
-                    if next_rid <= tps_all[data_col_idx]:
-                        print('skipped bc merged')
+                    if next_rid >= tps_all[data_col_idx]:
                         need[data_col_idx] = 0
                         continue
 
+                    # print('LOOKED AT TAIL')
 
                     col_pid = curr_record.columns[START_USER_DATA_COLUMN + data_col_idx]
                     data = self.read_pid(col_pid)
@@ -402,11 +408,12 @@ class Table:
                     resp[data_col_idx] = data
                     need[data_col_idx] = 0
 
-                curr_indir_pid = curr_record.columns[INDIRECTION_COLUMN]
-                next_rid = int_from_bytes(self.read_pid(curr_indir_pid))
+                if sum(need) != 0:
+                    curr_indir_pid = curr_record.columns[INDIRECTION_COLUMN]
+                    next_rid = int_from_bytes(self.read_pid(curr_indir_pid))
 
-                if next_rid == rid: # if next rid is base
-                    raise Exception('Came back to original')
+                    if next_rid == rid: # if next rid is base
+                        raise Exception("Came back to original, didn't get all we needed")
 
             # Release locks and return
             release_all(locks)
