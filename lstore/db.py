@@ -6,16 +6,18 @@ class Database():
 
     def __init__(self):
         self.tables = {}
-        self.my_manager = DiskManager("database_files")
+        self.my_manager = DiskManager()
         self.my_manager.my_database = self
         pass
 
     def open(self, path):
-        DiskManager.open_db()
+        self.my_manager = DiskManager(path)
+        self.my_manager.my_database = self
+        self.my_manager.open_db()
         pass
 
     def close(self):
-        pass
+        self.my_manager.close_db()
 
     """
     # Creates a new table
@@ -40,4 +42,6 @@ class Database():
     """
 
     def get_table(self, name):
+        print(self.tables[name].name)
+        return self.my_manager.import_table(self.tables[name])
         pass

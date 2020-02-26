@@ -16,10 +16,10 @@ records = {}
 
 seed(3562901)
 
-for i in range(0, 10):
-    key = 92106429 + randint(0, 90)
+for i in range(0, 69420):
+    key = 92106429 + randint(0, 10000)
     while key in records:
-        key = 92106429 + randint(0, 900)
+        key = 92106429 + randint(0, 1000000)
     records[key] = [key, randint(0, 20), randint(0, 20), randint(0, 20), randint(0, 20)]
     query.insert(*records[key])
     # print('inserted', records[key])
@@ -48,6 +48,46 @@ for key in records:
         for j, column in enumerate(record.columns):
             if column != records[key][j]:
                 error = True
+
+course_table = db.create_table('Course', 10, 0)
+cquery = Query(course_table)
+
+records = {}
+
+seed(3562901)
+
+for i in range(0, 694):
+    key = 50000 + randint(0, 1000)
+    while key in records:
+        key = 50000 + randint(0, 1000)
+    records[key] = [key, randint(0, 20), randint(0, 20), randint(0, 20), randint(0, 20), randint(0, 20), randint(0, 20), randint(0, 20), randint(0, 20), randint(0,20)]
+    cquery.insert(*records[key])
+    # print('inserted', records[key])
+
+for key in records:
+    record = cquery.select(key, [1]*10)[0]
+    error = False
+    for i, column in enumerate(record.columns):
+        if column != records[key][i]:
+            error = True
+    # if error:
+    #     print('select error on', key , ':', record, ', correct:', records[key])
+    # else:
+    #     print('select on', key, ':', record.columns)
+
+for key in records:
+    updated_columns = [None]*10
+    for i in range(1, grades_table.num_columns):
+        value = randint(0, 20)
+        updated_columns[i] = value
+        original = records[key].copy()
+        records[key][i] = value
+        cquery.update(key, *updated_columns)
+        record = cquery.select(key, [1]*10)[0]
+        error = False
+        for j, column in enumerate(record.columns):
+            if column != records[key][j]:
+                error = True
         # if error:
         #     print('update error on', original, 'and', updated_columns, ':', record, ', correct:', records[key].columns)
         # else:
@@ -61,9 +101,12 @@ for key in db.tables.keys():
     table = db.tables[key] # type : Table
     print("Num pageranges",len(table.page_ranges))
     for pr in table.page_ranges:
-        print("love")
+        # print("love")
         db.my_manager.write_page_range(pr,key)
 
 
-copy_table = filereader.read_files()
+
+# copy_table = filereader.read_files()
+
+print('done')
 
