@@ -17,6 +17,7 @@ class DiskManager:
         self.separator = int_to_bytes(int_from_bytes('NewTable'.encode('utf-8')))
         self.database_folder = dir + '/'
 
+    # Todo
     def write_to_disk(self, table_name, path, page_pid):
         _, page_idx, page_range_idx = page_pid
         try:
@@ -35,8 +36,10 @@ class DiskManager:
         self.write_page(pagerange, page, page_idx, type_of_page, table_name)
         pass
 
+    # Todo
     def load_from_disk(self, path, page_pid):
         pass
+
 
     def open_db(self):
         database_directory_file = open(self.database_folder + "Database_Directory", 'r+b')
@@ -62,6 +65,8 @@ class DiskManager:
                 print(database_directory_file.read(CELL_SIZE_BYTES).decode('utf-8'))
 
             self.my_database.tables[table_name] = new_table
+        
+        database_directory_file.close()
 
 
     def write_db_directory(self):
@@ -78,14 +83,18 @@ class DiskManager:
             
             data += int_to_bytes(table.num_columns)
 
-            data += int_from_bytes(len(table.page_ranges))
+            data += int_to_bytes(len(table.page_ranges))
             for pagerange in table.page_ranges:
                 data += int_to_bytes(pagerange.pagerange_id)
 
-                self.import_page_ranges()
+                # self.import_page_ranges()
 
             data += self.separator
 
+        binary_file.write(data)
+        binary_file.close()
+
+    # Todo
     def close_db(self, database):
         self.write_db_directory()
 
@@ -95,50 +104,95 @@ class DiskManager:
 
             for pagerange in table.page_ranges:
                 self.write_page_range(pagerange,table_name)
-        pass
-
+        
+    # Todo
     def purge(self):
         pass
 
+    """
+            --- Meta_file format ---
+
+    Every piece of info is 8 bytes.
+    Outline of file.
+    - Prev_rid
+    - Prev_tid
+    - Page_Directory Length
+
+    - MetaRecords
+        - BaseRecords
+            - Rid
+            - Key
+            - Columns
+
+        - TailRecords
+            - Rid
+            - Key
+            - Schema
+            - Columns
+    """
 
     def import_table(self, table):
-        binary_file = open(self.database_folder + table.name + "_meta", 'r+b')
 
-        data = bytearray(binary_file.read())
+        meta_file = open('./database_files/' + name + '_meta', 'r+b')
+        table.prev_rid = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
+        table.prev_tid = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
+        page_directory_size = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
 
-        current = 0
-        table.prev_rid = int_from_bytes(data[current : current + CELL_SIZE_BYTES - 1])
 
-        current += CELL_SIZE_BYTES
-        table.prev_tid = int_from_bytes(data[current : current + CELL_SIZE_BYTES - 1])
-
-        current += CELL_SIZE_BYTES
-        page_directory_size = int_from_bytes(data[current : current + CELL_SIZE_BYTES - 1])
+        tail_flag = False
 
         for i in range(page_directory_size):
-            current += CELL_SIZE_BYTES
-            key = int_from_bytes(data[current : current + CELL_SIZE_BYTES - 1])
 
-            columns = []
-            for i in range(table.num_total_columns):
-                column = []
+            # Read rid and key
+            rid = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
+            key = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
 
-                for i in range(NUMBER_OF_DEXS):
-                    current += CELL_SIZE_BYTES
-                    column.append(int_from_bytes(data[current : current + CELL_SIZE_BYTES - 1]))
+            if rid > table.prev_rid:
+                tail_flag = True
 
-                columns.append(column)
-            value = MetaRecord(key,columns[table.key_col],columns)
+            columns = [None for _ in range(table.num_total_cols)]
+            
+            # print('tail flag', tail_flag)
+            # Read columns of base record
+            if not tail_flag:
 
-            table.page_directory[key] = value
-        
+                for i in range(table.num_total_cols):          
+                    column = []
+
+                    for j in range(NUMBER_OF_DEXS):
+                        column.append(int_from_bytes(meta_file.read(CELL_SIZE_BYTES)))
+
+                    columns.append(column)
+
+            # Read columns of tail record
+            else:
+                schema = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
+                schema_encoding = bin(schema)[2:].zfill(table.num_columns)[::-1]
+
+                for i in range(table.num_total_cols):
+                            
+                    if i >= START_USER_DATA_COLUMN and schema_encoding[i - START_USER_DATA_COLUMN] == '0':
+                        continue
+                    else:
+                        column = []
+                        for j in range(NUMBER_OF_DEXS):
+                            column.append(int_from_bytes(meta_file.read(CELL_SIZE_BYTES)))
+
+                    columns[i] = column
+
+
+            metarecord = MetaRecord(rid,key,columns)
+
+            table.page_directory[rid] = metarecord
+
+        meta_file.close()
         return table
 
-        pass
-# Give table by name
+
+    # Give table by name
     def write_table_meta(self, table_name):
         try:  
-            table = self.my_dictionary.table[table]
+            table = self.my_database.tables[table_name]
         except KeyError:
             return False
 
@@ -147,23 +201,78 @@ class DiskManager:
         except FileNotFoundError:
             return False
         data = bytearray()
+
+        #
+        # Write some globals
+        #
         data += int_to_bytes(table.prev_rid) # rid
         data += int_to_bytes(table.prev_tid) # tid
         data += int_to_bytes(len(table.page_directory))
+
         # key is the rid and value are the metarecords
         # columns point to the location in data
-        for key, value in self.table.page_directory.items():
-            data += int_to_bytes(key)
 
-            for column in value.column:
-                for dex in column:
-                    data += int_to_bytes(dex)
+        num_of_rids = len(table.page_directory)
+        rids = list(table.page_directory.keys()) # type : dict
+        metarecords = list(table.page_directory.values())
+
+        tail_flag = False
+        counter = 0
+
+        #
+        # Write all Meta records
+        #
+        while counter < num_of_rids:
+
+            current_rid = rids[counter]
+            current_record = metarecords[counter]
+
+            if current_rid > table.prev_rid: # First tail rid
+                tail_flag = True
+
+            # Write rid and key
+            data += int_to_bytes(current_rid)
+            data += int_to_bytes(current_record.key)
+
+            # Write columns
+            if not tail_flag:
+
+                for column in current_record.columns:
+
+                    for dex in column:
+                        data += int_to_bytes(dex)
+
+            else:
+                the_columns = bytearray()
+                schema = 0
+
+                for i, column in enumerate(current_record.columns):
+
+                    if column == None:
+                        # the_columns += bytearray(CELL_SIZE_BYTES * 3)
+                        # for _ in range(3):
+                        #     the_columns += int_to_bytes(0)
+                        print('col None')
+                        continue
+                    else:
+                        if i >= START_USER_DATA_COLUMN:
+                            schema += 2**(i - START_USER_DATA_COLUMN)
+                        for dex in column:
+                            the_columns += int_to_bytes(dex)
+                
+                schema = int_to_bytes(schema)
+
+
+                data += schema + the_columns
+
+            counter += 1
         
         binary_file.write(data)
         binary_file.close()
 
         return True
 
+    # Todo
     def write_page_range(self, pagerange, table_folder):
         try:
             binary_file = open(self.database_folder + "/" + table_folder + "/" + "pagerange_" + str(pagerange.pagerange_id), "w+b")
@@ -195,7 +304,7 @@ class DiskManager:
         binary_file.close()
 
     # def write_page_range_meta(self, pagerange):
-    #     pass
+    # Todo
     def write_page(self, pagerange, page, inner_page_idx, base_or_tail, table_folder):
         if page.data == None:
             raise Exception("Page not loaded")
@@ -242,10 +351,11 @@ class DiskManager:
         
         data += binary_file.read(PAGE_SIZE)
         page.load(data)
+        binary_file.close()
 
         return page
 
-    def import_page_ranges(self, pagerange_num, table_folder, pagerange = PageRange()):
+    def import_page_ranges(self, pagerange_num, table_folder, pagerange = PageRange(0)):
 
         try:
             binary_file = open(self.database_folder + "/" + table_folder + "/" + "pagerange_" + str(pagerange_num), "r+b")
@@ -283,6 +393,8 @@ class DiskManager:
         else:
             del pagerange
             return None
+
+        binary_file.close()
 
         return pagerange
         # current += CELL_SIZE_BYTES * (PAGE_RANGE_OFFSET + 1)
