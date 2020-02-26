@@ -1,10 +1,12 @@
 from table import Table
 from config import *
+from diskmanager import DiskManager
 
 class Database():
 
     def __init__(self):
         self.tables = {}
+        self.my_manager = DiskManager(self,"db_directory")
         pass
 
     def open(self, path):

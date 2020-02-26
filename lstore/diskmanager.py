@@ -18,16 +18,28 @@ class DiskManager:
         self.separator = int_to_bytes(int_from_bytes('NewTable'.encode('utf-8')))
         self.database_folder = dir + '/'
 
-    def write_to_disk(self, path, page_pid):
-        pass
+    def write_to_disk(self, table_name, path, page_pid):
+        _, page_idx, page_range_idx = page_pid
+        try:
+            current_table = self.my_database.tables[table_name] # type: Table
+        except KeyError:
+            return False
+        
+        page = current_table.get_page(page_pid) # type: Page
+        pagerange = current_table.get_page_range(page_range_idx)
+        
+        if page_idx >= PAGE_RANGE_MAX_BASE_PAGES:
+            type_of_page = 'tail'
+        else:
+            type_of_page = 'base'
 
-    # def import_from_disk(self):
-    #     pass
+        self.write_page(pagerange, page, page_idx, type_of_page, table_name)
+        pass
 
     def load_from_disk(self, path, page_pid):
         pass
 
-    def open_db(self, database):
+    def open_db(self):
         database_directory_file = open(self.database_folder + "Database_Directory", 'r+b')
 
         num_of_tables = int_from_bytes(database_directory_file.read(CELL_SIZE_BYTES))
@@ -47,6 +59,8 @@ class DiskManager:
                 pagerange_id = database_directory_file.read(CELL_SIZE_BYTES)
 
                 self.import_page_ranges(pagerange_id, table_name)
+
+                print(database_directory_file.read(CELL_SIZE_BYTES).decode('utf-8'))
 
 
     def write_db_directory(self):
