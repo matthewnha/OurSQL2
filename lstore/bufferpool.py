@@ -2,37 +2,51 @@ from page import Page
 from pagerange import PageRange
 from config import *
 
-class bufferpool:
+class BufferPool:
 
-
-    def __init__(self):
+    def __init__(self, table):
         self.max_pages = MAX_PAGES
-        self.num_pages = 0
-        self.pages = {}
+        self.num_pool_pages = 0
+        self.pages = [] # todo: just pop random for now, later organize
         self.pins = {}
         self.least_recently_used = None
+        self.table = table # type: Table
         pass
 
-    def load_from_disk(self):
-        page_to_pop = self.pop_page()
+    def pop_page(self) -> Page:
+        '''
+        Pops page and decides via ? method (LRU/MRU)
+        '''
+
+        # todo: choose a page to pop. pops oldest page for now
+        page_to_pop = self.pages.pop()
+
         page_to_pop.data = None
-        page_to_pop
+        page_to_pop.is_loaded = False
+
         pass
 
+    def load_from_disk(self, page):
+        if self.num_pool_pages < MAX_POOL_PAGES:
+            self.pop_page() # Choose page to remove from pool
 
-    # pool.handle(page.read, 0)
+        pid = None # todo: get pid
+        success = self.table.disk.load_page_from_disk(pid)
+
+        if not success:
+            raise Exception("Page didn't exist on disk")
+
+        self.pages.append(page)
+
     def handle(self, page, page_func, *args):
-        if not page_func.loaded:
-            load_from_disk(page)
+        if not page.is_loaded:
+            self.load_from_disk(page)
 
         return page_func(*args)
 
     # def get_page(self, page_key):
     #     self.num_pages += 1
     #     pass
-
-    def pop_page(self):
-        pass
 
     def drop_page(self, page_key):
         if self.pins[page_key] == 0 and len(self.pages) != 0:

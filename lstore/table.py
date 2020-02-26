@@ -1,12 +1,16 @@
+import time
+import threading
+from math import ceil, floor
+
 from page import *
 from pagerange import PageRange
 from index import Index
-from time import time
 from config import *
-from math import ceil, floor
 from util import *
-import time
-import threading
+
+from diskmanager import DiskManager
+from bufferpool import BufferPool
+
 
 class MetaRecord:
 
@@ -34,26 +38,28 @@ class Table:
     :param key: int             #Index of table key in columns
     """
     def __init__(self, name, num_columns, key_col):
+        
         self.name = name
         self.key_col = key_col
         self.num_columns = num_columns
-        self.num_sys_columns = 4
-        self.num_total_cols = self.num_sys_columns + self.num_columns
+        self.num_sys_columns = 4 # Don't export
+        self.num_total_cols = self.num_sys_columns + self.num_columns # Don't export
         self.num_rows = 0
 
         self.page_ranges = []
 
-        self.page_directory = {} # key is rid 
-        self.rw_locks = {} # only base records for now
-        self.del_locks = {}
+        self.page_directory = {}
+        self.rw_locks = {} # only base records for now # Don't export
+        self.del_locks = {} # Don't export
 
-        self.merge_lock = threading.Lock()
-
-        self.key_index = {} # key -> base MetaRecord PID
-        self.index = Index(self)
+        self.merge_lock = threading.Lock() # Don't export
 
         self.prev_rid = 0
         self.prev_tid = 2**64 - 1
+
+        self.key_index = {} # key -> base MetaRecord PID # Don't export
+        self.index = Index(self) # Don't export
+
         pass
 
     def get_page(self, pid) -> Page: # type: Page

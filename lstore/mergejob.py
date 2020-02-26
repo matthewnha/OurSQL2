@@ -142,6 +142,8 @@ class MergeJob:
             cell_idx, inner_idx, range_idx = pid
             new_page = self.copied_base_pages[(inner_idx, range_idx)]
             og_page = self.table.get_page(pid)
+            
+            # Make sure the page is loaded first
             og_page.data = new_page.data
             # print('')
 

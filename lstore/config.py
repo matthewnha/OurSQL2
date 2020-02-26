@@ -2,6 +2,7 @@
 # PageSize, StartRID, etc..
 from math import floor
 
+# Page/pagerange data
 BYTE_ORDER = 'little'
 PAGE_RANGE_MAX_BASE_PAGES = 16 # max columns
 BLOCKS_PER_PAGE = 512
@@ -10,6 +11,7 @@ PAGE_SIZE = 4096
 CELL_SIZE_BYTES = 4096 // BLOCKS_PER_PAGE
 MAX_PAGES = 1000
 
+# Meta columns
 INDIRECTION_COLUMN = 0
 RID_COLUMN = 1
 TIMESTAMP_COLUMN = 2
@@ -17,3 +19,6 @@ SCHEMA_ENCODING_COLUMN = 3
 START_USER_DATA_COLUMN = 4
 
 RESERVED_TID = 2**64 - 1
+
+# Bufferpool
+MAX_POOL_PAGES = 16

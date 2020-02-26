@@ -5,17 +5,26 @@ class Page:
 
     def __init__(self, is_importing = False):
         self.num_records = 0
+
         if is_importing:
             self.data = None
+            self.is_loaded = False
         else:
             self.data = bytearray(4096)
+            self.is_loaded = True
             self.write_tps(RESERVED_TID)
+
+        self.is_dirty = False
         
 
     def load(self, data):
         if self.data == None:
             self.data = data
 
+    def load(self, data):
+        if self.data == None:
+            self.data = data
+    
     def has_capacity(self):
         return self.num_records < (CELLS_PER_PAGE)
 
