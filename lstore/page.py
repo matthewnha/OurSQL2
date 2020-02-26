@@ -15,6 +15,11 @@ class Page:
             self.write_tps(RESERVED_TID)
 
         self.is_dirty = False
+        
+
+    def load(self, data):
+        if self.data == None:
+            self.data = data
 
     def load(self, data):
         if self.data == None:

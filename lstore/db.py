@@ -1,14 +1,17 @@
 from table import Table
 from config import *
+from diskmanager import DiskManager
 
 class Database():
 
     def __init__(self):
-        self.tables = []
+        self.tables = {}
+        self.my_manager = DiskManager("database_files")
+        self.my_manager.my_database = self
         pass
 
     def open(self, path):
-        
+        DiskManager.open_db()
         pass
 
     def close(self):
@@ -23,7 +26,7 @@ class Database():
 
     def create_table(self, name, num_columns, key):
         table = Table(name, num_columns, key)
-        self.tables.append(table)
+        self.tables[name] = table
         return table
 
     """

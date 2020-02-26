@@ -69,6 +69,9 @@ class Table:
 
         return page
 
+    def get_page_range(self,page_range_idx):
+        return self.page_ranges[page_range_idx]
+
     def read_pid(self, pid): # type: Page
         cell_idx, page_idx, page_range_idx = pid
         page_range = self.page_ranges[page_range_idx] # type: PageRange
@@ -107,7 +110,7 @@ class Table:
             try:
                 page_range = self.page_ranges[page_range_idx] # type: PageRange
             except IndexError:
-                page_range = PageRange()
+                page_range = PageRange(len(self.page_ranges))
                 self.page_ranges.append(page_range)
 
             # New cell's page index in respect to pages in page range
