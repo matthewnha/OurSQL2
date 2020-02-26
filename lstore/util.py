@@ -86,8 +86,19 @@ def col_encoding_to_binary(list, truthy=1, falsey=0):
 
     return bin
 
+def cetb(list, truthy=1, falsey=0):
+  '''
+  Column encoding to binary number
+  
+  cetb((OBJ, None, OBJ, None), falsey=None)
+  '''
+  return col_encoding_to_binary(list, truthy, falsey)
+
 
 def check_col_encoding(bin_enc, col):
+    '''
+    [0,1,2,3]
+    '''
     mask = 2**col
     return mask & bin_enc == mask
 
