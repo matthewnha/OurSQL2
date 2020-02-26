@@ -38,6 +38,9 @@ def schedule_merge():
         if stop:
             return
 
+        if stop:
+            return
+
 scheduler = threading.Thread(target=schedule_merge, args=())
 scheduler.start()
 
