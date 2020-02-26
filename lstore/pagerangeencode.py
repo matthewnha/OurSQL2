@@ -2,6 +2,11 @@ from page import Page
 from pagerange import PageRange
 from util import *
 
+META_OFFSETS = [
+    0, # BP_NUM
+    8, # TP_NUM
+    16, # END
+]
 def encode_pagerange(pr):
 
     #
@@ -58,8 +63,8 @@ def decode_pagerange(BYTES_pr) -> PageRange:
     # Read Meta
     #
 
-    BYTES_base_page_count = BYTES_pr[0:8]  # 8 bytes
-    BYTES_tail_page_count = BYTES_pr[8:16]  # 8 bytes
+    BYTES_base_page_count = BYTES_pr[META_OFFSETS[0]:META_OFFSETS[1]]  # 8 bytes
+    BYTES_tail_page_count = BYTES_pr[META_OFFSETS[1]:META_OFFSETS[2]]  # 8 bytes
 
     pr.base_page_count = int_from_bytes(BYTES_base_page_count)
     pr.tail_page_count = int_from_bytes(BYTES_tail_page_count)
@@ -72,7 +77,7 @@ def decode_pagerange(BYTES_pr) -> PageRange:
     offset_end_base = 16
 
     for i in range(pr.base_page_count):
-        start = 16 + (i * bytes_page_size)
+        start = META_OFFSETS[-1] + (i * bytes_page_size)
         end = start + bytes_page_size
         BYTES_page = BYTES_pr[start:end]
 
@@ -195,7 +200,7 @@ def test():
     pr_bytes = encode_pagerange(pr)
     new_pr = decode_pagerange(pr_bytes)
     
-    compare_page_ranges(pr, new_pr)
+    print(compare_page_ranges(pr, new_pr))
 
 
 if __name__ == '__main__': test()
