@@ -1,6 +1,5 @@
 from config import *
 from util import *
-from table import Table, MetaRecord
 from pagerange import PageRange
 from page import Page
 import os
