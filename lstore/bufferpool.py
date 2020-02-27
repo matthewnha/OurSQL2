@@ -24,6 +24,9 @@ class BufferPool:
         page_to_pop.is_loaded = False
 
         pass
+    
+    def write_to_disk(self, page):
+        pass
 
     def load_from_disk(self, page):
         if self.num_pool_pages < MAX_POOL_PAGES:

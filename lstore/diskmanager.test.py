@@ -5,6 +5,7 @@ from config import *
 
 from random import choice, randint, sample, seed
 from colorama import Fore, Back, Style
+
 # Student Id and 4 grades   
 db = Database()
 db.open('My_DB')

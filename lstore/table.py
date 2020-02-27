@@ -110,7 +110,7 @@ class Table:
             try:
                 page_range = self.page_ranges[page_range_idx] # type: PageRange
             except IndexError:
-                page_range = PageRange(len(self.page_ranges))
+                page_range = PageRange()
                 self.page_ranges.append(page_range)
 
             # New cell's page index in respect to pages in page range

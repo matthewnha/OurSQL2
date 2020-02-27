@@ -98,9 +98,7 @@ class DiskManager:
             new_table.page_ranges = [None]*num_page_ranges
 
             for i in range(num_page_ranges):
-                pagerange_id = int_from_bytes(database_directory_file.read(CELL_SIZE_BYTES))
-
-                new_table.page_ranges[pagerange_id] = self.import_page_ranges(pagerange_id, table_name)
+                new_table.page_ranges[i] = self.import_page_ranges(i, table_name)
 
             self.my_database.tables[table_name] = new_table
             print(database_directory_file.read(CELL_SIZE_BYTES).decode('utf-8'))
@@ -120,17 +118,9 @@ class DiskManager:
 
         for name, table in self.my_database.tables.items():
             data += int_to_bytes(len(name.encode('utf-8'))) + name.encode('utf-8')
-
             data += int_to_bytes(table.key_col)
-            
             data += int_to_bytes(table.num_columns)
-
             data += int_to_bytes(len(table.page_ranges))
-            for pagerange in table.page_ranges:
-                data += int_to_bytes(pagerange.pagerange_id)
-
-                # self.import_page_ranges()
-
             data += self.separator
 
         binary_file.write(data)
@@ -144,8 +134,8 @@ class DiskManager:
         for table_name, table in self.my_database.tables.items():
             self.write_table_meta(table_name)
 
-            for pagerange in table.page_ranges:
-                self.write_page_range(pagerange,table_name)
+            for i, pagerange in enumerate(table.page_ranges):
+                self.write_page_range(pagerange, i, table_name)
         del self.my_database
         
     # Todo
@@ -324,10 +314,10 @@ class DiskManager:
         return True
 
     # Todo
-    def write_page_range(self, pagerange, table_name):
+    def write_page_range(self, pagerange, pagerange_num, table_name):
         # print("Here")
         try:
-            binary_file = open(self.database_folder + "/" + table_name + "/" + "pagerange_" + str(pagerange.pagerange_id), "w+b")
+            binary_file = open(self.database_folder + "/" + table_name + "/" + "pagerange_" + str(pagerange_num), "w+b")
         except FileNotFoundError:
             return False
 
@@ -420,8 +410,6 @@ class DiskManager:
 
         current = 0
         binary_file.seek(0,0)
-
-        pagerange.pagerange_id = pagerange_num
         pagerange.base_page_count = int_from_bytes(binary_file.read(CELL_SIZE_BYTES))
         pagerange.tail_page_count = int_from_bytes(binary_file.read(CELL_SIZE_BYTES))
 
