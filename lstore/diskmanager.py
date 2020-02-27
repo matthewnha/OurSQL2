@@ -35,8 +35,12 @@ class DiskManager:
 
         
     def make_table_folder(self, table_name):
+<<<<<<< HEAD
         table_name = sanitize(table_name)
         path = self.database_folder + table_name
+=======
+        path = self.database_folder + sanitize(table_name)
+>>>>>>> 43455ea5a12809c48827d1f82b26e164f50dd599
         access_rights = 0o755
         try:
             os.mkdir(path, access_rights)
@@ -171,16 +175,14 @@ class DiskManager:
 
     def import_table(self, table):
         try:
-            meta_file = open(self.database_folder + table.name + '/' + table.name + '_meta', 'r+b')
+            meta_file = open(self.database_folder + sanitize(table.name) + '/' + sanitize(table.name) + '_meta', 'r+b')
         except FileNotFoundError:
             return False
 
         table.prev_rid = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
         table.prev_tid = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
-        table.num_rows = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
         page_directory_size = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
-        
-
+        table.num_rows = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
 
         tail_flag = False
 
@@ -244,10 +246,10 @@ class DiskManager:
             return False
 
         try:
-            binary_file = open(self.database_folder + table_name + '/' + table_name + "_meta", 'w+b')
+            binary_file = open(self.database_folder + sanitize(table_name) + '/' + sanitize(table_name) + "_meta", 'w+b')
         except FileNotFoundError:
             self.make_table_folder(table_name)
-            binary_file = open(self.database_folder + table_name + '/' + table_name + "_meta", 'w+b')
+            binary_file = open(self.database_folder + sanitize(table_name) + '/' + sanitize(table_name) + "_meta", 'w+b')
 
         data = bytearray()
 
@@ -324,7 +326,7 @@ class DiskManager:
     def write_page_range(self, pagerange, pagerange_num, table_name):
         # print("Here")
         try:
-            binary_file = open(self.database_folder + "/" + table_name + "/" + "pagerange_" + str(pagerange_num), "w+b")
+            binary_file = open(self.database_folder + "/" + sanitize(table_name) + "/" + "pagerange_" + str(pagerange_num), "w+b")
         except FileNotFoundError:
             return False
 
@@ -340,7 +342,7 @@ class DiskManager:
         if page.data == None:
             raise Exception("Page not loaded")
 
-        binary_file = open(self.database_folder + "/" + table_folder + "/" + "pagerange_" + str(pagerange.pagerange_id), "r+b")
+        binary_file = open(self.database_folder + "/" + sanitize(table_folder) + "/" + "pagerange_" + str(pagerange.pagerange_id), "r+b")
 
         data = bytearray()
 
@@ -364,7 +366,7 @@ class DiskManager:
     # Todo
     def import_page(self, pagerange, inner_page_idx, base_or_tail, table_folder, page = Page(True)):
         try:
-            binary_file = open(self.database_folder + "/" + table_folder + "/" + "pagerange_" + pagerange.pagerange_id, 'r+b')
+            binary_file = open(self.database_folder + "/" + sanitize(table_folder) + "/" + "pagerange_" + pagerange.pagerange_id, 'r+b')
         except FileNotFoundError:
             return False
 
@@ -390,9 +392,9 @@ class DiskManager:
     def import_page_ranges(self, pagerange_num, table_folder):
 
         try:
-            binary_file = open(self.database_folder + "/" + table_folder + "/" + "pagerange_" + str(pagerange_num), "r+b")
+            binary_file = open(self.database_folder + sanitize(table_folder) + "/" + "pagerange_" + str(pagerange_num), "r+b")
         except FileNotFoundError:
-            return False
+            raise Exception('Pagerange file not found', sanitize(table_folder), pagerange_num)
 
         return decode_pagerange(binary_file.read())
 
