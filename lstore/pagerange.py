@@ -26,7 +26,7 @@ class PageRange:
         '''
 
         if self.base_page_count >= PAGE_RANGE_MAX_BASE_PAGES:
-            return None
+            raise Exception('Trying to create base page on full page range')
 
         inner_page_index = self.base_page_count
         new_page = Page()

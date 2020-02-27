@@ -22,3 +22,12 @@ RESERVED_TID = 2**64 - 1
 
 # Bufferpool
 MAX_POOL_PAGES = 16
+
+# Encoding
+SIZE_ENCODED_PAGE = 8 + PAGE_SIZE
+
+PR_META_OFFSETS = [
+    0, # BP_NUM
+    8, # TP_NUM
+    16, # END
+]

@@ -323,84 +323,94 @@ class DiskManager:
 
         data = encode_pagerange(pagerange)
 
-        # data = bytearray()
-
-        # data += int_to_bytes(pagerange.base_page_count) # base page count first
-        # data += int_to_bytes(pagerange.tail_page_count) # tail page count second
-
-        # base_string = int_to_bytes(int_from_bytes("basedata".encode('utf-8')))
-
-        # data += base_string
-        # for page in pagerange.base_pages:
-        #     if page != None:
-        #         data += int_to_bytes(page.num_records)
-        #         data += page.data
-            
-
-        # tail_string = int_to_bytes(int_from_bytes("taildata".encode('utf-8')))
-
-        # data += tail_string
-
-        # for page in pagerange.tail_pages:
-        #     if page != None:
-        #         data += int_to_bytes(page.num_records)
-        #         data += page.data
-
         binary_file.write(data)
         binary_file.close()
 
         return True
 
+    def get_page_offset_in_pr(self, pid, num_base_pages):
+        _, inner_idx, pr_idx = pid
+        
+        idx = 0
+        if inner_idx >= PAGE_RANGE_MAX_BASE_PAGES:
+            idx = num_base_pages - 1
+            idx += inner_idx - PAGE_RANGE_MAX_BASE_PAGES
+
+        # Skip meta
+        offset = PR_META_OFFSETS[-1]
+
+        # Go to actual offset
+        offset += SIZE_ENCODED_PAGE * idx
+
+        return offset
+
+
     # Todo
-    def write_page(self, pagerange, page, inner_page_idx, base_or_tail, table_folder):
+    def write_page(self, page, pid, table, table_folder, num_base_pages = None):
         if page.data == None:
             raise Exception("Page not loaded")
-
-        binary_file = open(self.database_folder + "/" + table_folder + "/" + "pagerange_" + str(pagerange.pagerange_id), "r+b")
-
-        data = bytearray()
-
-        if base_or_tail == 'base':
-            if inner_page_idx < pagerange.base_page_count:
-                page_location = PAGE_RANGE_OFFSET * CELL_SIZE_BYTES + inner_page_idx * (PAGE_SIZE + PAGE_OFFSET + 1) - CELL_SIZE_BYTES
-            else:
-                return False
-
-        elif base_or_tail == 'tail': 
-            if inner_page_idx < pagerange.tail_page_count: 
-                page_location = PAGE_RANGE_OFFSET * CELL_SIZE_BYTES + (pagerange.base_page_count + inner_page_idx) * (PAGE_SIZE + PAGE_OFFSET + 2) - CELL_SIZE_BYTES
-            else:
-                return False
         
-        binary_file.seek(page_location)
-        binary_file.write(int_to_bytes(page.num_records))
-        binary_file.write(page.data)
+        _, inner_idx, pr_idx = pid
+        binary_file = open(self.database_folder + "/" + table_folder + "/" + "pagerange_" + str(pr_idx), "w+b")
+
+        if num_base_pages == None:
+            num_base_pages = table.page_ranges[pr_idx].base_page_count
+
+        offset = self.get_page_offset_in_pr(pid, num_base_pages)
+        binary_file.seek(offset)
+        
+        # What to write
+
+        encoded = encode_page(page)
+        binary_file.write(encoded)
+
         binary_file.close()
 
+        print('pause')
+
     # Todo
-    def import_page(self, pagerange, inner_page_idx, base_or_tail, table_folder, page = Page(True)):
+    def import_page(self, page, pid, table, table_folder, num_base_pages = None):
+        _, inner_idx, pr_idx = pid
+
         try:
-            binary_file = open(self.database_folder + "/" + table_folder + "/" + "pagerange_" + pagerange.pagerange_id, 'r+b')
+            binary_file = open(self.database_folder + "/" + table_folder + "/" + "pagerange_" + str(pr_idx), 'r+b')
         except FileNotFoundError:
             return False
 
-        data = bytearray()
+        if num_base_pages == None:
+            num_base_pages = table.page_ranges[pr_idx].base_page_count
+
+        offset = self.get_page_offset_in_pr(pid, num_base_pages)
         
-        if base_or_tail == 'base':
-            if inner_page_idx < pagerange.base_page_count:
-                page_location = PAGE_RANGE_OFFSET * CELL_SIZE_BYTES + inner_page_idx * (PAGE_SIZE + PAGE_OFFSET + 1) - CELL_SIZE_BYTES
-        elif base_or_tail == 'tail': 
-            if inner_page_idx < pagerange.tail_page_count: 
-                page_location = PAGE_RANGE_OFFSET * CELL_SIZE_BYTES + (pagerange.base_page_count + inner_page_idx) * (PAGE_SIZE + PAGE_OFFSET + 2) - CELL_SIZE_BYTES
+        # Read num_records
+        binary_file.seek(offset)
+        num_records = ifb(binary_file.read(8))
         
-        binary_file.seek(page_location)
-        page.num_records = binary_file.read(CELL_SIZE_BYTES)
-        
-        data += binary_file.read(PAGE_SIZE)
-        page.load(data)
+        # Read data
+        data = binary_file.read(PAGE_SIZE)
+
+        page.num_records = num_records
+        page.data = data
+        # todo: is_dirty, pinning
+
         binary_file.close()
 
-        return page
+        print('pause')
+
+    def rw_test(self):
+        og_page = Page()
+        og_page.write_tps(999)
+        og_page.write(itb(111))
+        og_page.write(itb(222))
+        og_page.write(itb(333))
+
+        self.write_page(og_page, (0, 0, 0), None, 'Grades', 16)
+
+        new_page = Page()
+        self.import_page(new_page, (0,0,0), None, 'Grades', 16)
+
+        results = compare_pages(og_page, new_page)
+        print(results)
 
     #Todo
     def import_page_ranges(self, pagerange_num, table_folder):
@@ -411,36 +421,4 @@ class DiskManager:
             return False
 
         return decode_pagerange(binary_file.read())
-
-        # current = 0
-        # binary_file.seek(0,0)
-
-        # pagerange.pagerange_id = pagerange_num
-        # pagerange.base_page_count = int_from_bytes(binary_file.read(CELL_SIZE_BYTES))
-        # pagerange.tail_page_count = int_from_bytes(binary_file.read(CELL_SIZE_BYTES))
-
-        # try: 
-        #     base_string = binary_file.read(CELL_SIZE_BYTES).decode('utf-8')
-        #     print(base_string)
-        # except:
-        #     print("UGG")
-
-        # if base_string == 'basedata':
-        #     print("Success")
-        # else:
-        #     del pagerange
-        #     return None
-        # try: 
-        #     current = CELL_SIZE_BYTES * (PAGE_RANGE_OFFSET + 1) + CELL_SIZE_BYTES * (PAGE_OFFSET*2) + PAGE_SIZE * pagerange.base_page_count
-        #     binary_file.seek(current)
-        #     tail_string = binary_file.read(CELL_SIZE_BYTES).decode('utf-8')
-        #     print(tail_string)
-        # except:
-        #     print("UGG")
-
-        # if tail_string == 'taildata':
-        #     print("TSuccess")
-        # else:
-        #     del pagerange
-        #     return None
 

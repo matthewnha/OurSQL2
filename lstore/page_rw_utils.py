@@ -1,12 +1,8 @@
 from page import Page
 from pagerange import PageRange
 from util import *
+from config import *
 
-META_OFFSETS = [
-    0, # BP_NUM
-    8, # TP_NUM
-    16, # END
-]
 def encode_pagerange(pr):
 
     #
@@ -22,7 +18,7 @@ def encode_pagerange(pr):
     BYTES_base_pages = b''
     for i in range(pr.base_page_count):
         page = pr.base_pages[i]
-        BYTES_base_pages += encode_page(page)  # 8 + 4096
+        BYTES_base_pages += encode_page(page)  # 8 + PAGE_SIZE
 
     #
     # Write Tail Pages
@@ -36,22 +32,22 @@ def encode_pagerange(pr):
     write = b''
     write += BYTES_base_page_count  # 8 bytes
     write += BYTES_tail_page_count  # 8 bytes
-    write += BYTES_base_pages      # num_bp * (8+4096)
-    write += BYTES_tail_pages      # num_tp * (8+4096)
+    write += BYTES_base_pages      # num_bp * (8+PAGE_SIZE)
+    write += BYTES_tail_pages      # num_tp * (8+PAGE_SIZE)
 
     return write
 
 def encode_page(page: Page):
     if page == None:
         num_records = 0
-        data = bytearray(4096)
+        data = bytearray(PAGE_SIZE)
     else:
         num_records = page.num_records
         data = page.data
 
     out = b''
     out += int_to_bytes(num_records)  # 8
-    out += bytes(data)               # 4096
+    out += bytes(data)               # PAGE_SIZE
 
     return out
 
@@ -63,8 +59,8 @@ def decode_pagerange(BYTES_pr) -> PageRange:
     # Read Meta
     #
 
-    BYTES_base_page_count = BYTES_pr[META_OFFSETS[0]:META_OFFSETS[1]]  # 8 bytes
-    BYTES_tail_page_count = BYTES_pr[META_OFFSETS[1]:META_OFFSETS[2]]  # 8 bytes
+    BYTES_base_page_count = BYTES_pr[PR_META_OFFSETS[0]:PR_META_OFFSETS[1]]  # 8 bytes
+    BYTES_tail_page_count = BYTES_pr[PR_META_OFFSETS[1]:PR_META_OFFSETS[2]]  # 8 bytes
 
     pr.base_page_count = int_from_bytes(BYTES_base_page_count)
     pr.tail_page_count = int_from_bytes(BYTES_tail_page_count)
@@ -73,18 +69,18 @@ def decode_pagerange(BYTES_pr) -> PageRange:
     # Read Base Pages
     #
 
-    bytes_page_size = 8 + 4096
+    bytes_page_size = 8 + PAGE_SIZE
     offset_end_base = 16
 
     for i in range(pr.base_page_count):
-        start = META_OFFSETS[-1] + (i * bytes_page_size)
+        start = PR_META_OFFSETS[-1] + (i * bytes_page_size)
         end = start + bytes_page_size
+        offset_end_base = end  # so we know where the tails start
         BYTES_page = BYTES_pr[start:end]
 
         page = decode_page(BYTES_page)
         pr.base_pages[i] = page
 
-    offset_end_base = end  # so we know where the tails start
 
     #
     # Read Tail Pages
@@ -113,12 +109,30 @@ def extract_page_data_from_pr(pr_bytes, inner_idx):
 
     max_base_pages = 16
     offset_start_bp = 16
-    bytes_page_size = 8 + 4096
+    bytes_page_size = 8 + PAGE_SIZE
     
     if inner_idx < 16: # Getting base page
         pass
     else:
         pass
+
+def compare_pages(a, b):
+    results = []
+    test = a.num_records == b.num_records
+    results.append(test)
+    # print('\tNum Records match', test)
+
+    test = a.read_tps() == b.read_tps()
+    results.append(test)
+    # print('\tTPS match', test)
+
+    for r in range(a.num_records):
+        test = int_from_bytes(a.read(r)) == int_from_bytes(b.read(r))
+        results.append(test)
+        # print('\tRecord', i, 'match', test)
+
+    return results
+    # print('')
 
 def compare_page_ranges(a, b):
     results = []
