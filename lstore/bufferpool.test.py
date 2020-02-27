@@ -8,6 +8,7 @@ from mergejob import MergeJob
 import threading
 import time
 import statistics
+import sys
 
 # Student Id and 4 grades
 
@@ -16,94 +17,136 @@ import statistics
 # content = file.read()
 # print('Start stuff')
 
-expected = {}
-keys = []
 
-db = Database()
-db.open('~/ECS165')
-grades_table = db.create_table('Grades', 5, 0)
-query = Query(grades_table)
+def test1():
+    expected = {}
+    keys = []
 
-# Measuring Insert Performance
-insert_time_0 = process_time()
-for i in range(0, 100):
-    data = [i, i*10, i*20, i*30, i*40]
-    query.insert(*data)
+    db = Database()
+    db.open('~/ECS165')
+    grades_table = db.create_table('Grades', 5, 0)
+    query = Query(grades_table)
 
-    keys.append(i)
-    expected[i] = data
-insert_time_1 = process_time()
+    # Measuring Insert Performance
+    insert_time_0 = process_time()
+    for i in range(0, 100):
+        data = [i, i*10, i*20, i*30, i*40]
+        query.insert(*data)
 
-print("Inserting 10k records took:  \t\t\t", insert_time_1 - insert_time_0)
+        keys.append(i)
+        expected[i] = data
+    insert_time_1 = process_time()
 
-# Measuring update Performance
+    print("Inserting 10k records took:  \t\t\t", insert_time_1 - insert_time_0)
 
-update_time_0 = process_time()
-for i in range(0, 10):
-    col = randint(0, 4)
-    val = randint(2000, 3000)
-    data = [None, None, None, None, None]
-    data[col] = val
+    # Measuring update Performance
 
-    key = choice(keys)
-    query.update(key, *data)
-    expected[key][col] = val
+    update_time_0 = process_time()
+    for i in range(0, 10):
+        col = randint(0, 4)
+        val = randint(2000, 3000)
+        data = [None, None, None, None, None]
+        data[col] = val
 
-
-db.close()
-
-db = Database()
-db.open('~/ECS165')
-grades_table = db.tables["Grades"]
-query = Query(grades_table)
+        key = choice(keys)
+        query.update(key, *data)
+        expected[key][col] = val
 
 
-# Measuring Insert Performance
-insert_time_0 = process_time()
-for i in range(100, 200):
-    data = [i, i*10, i*20, i*30, i*40]
-    query.insert(*data)
+    db.close()
 
-    keys.append(i)
-    expected[i] = data
-insert_time_1 = process_time()
-
-print("Inserting 10k records took:  \t\t\t", insert_time_1 - insert_time_0)
-
-# Measuring update Performance
-
-update_time_0 = process_time()
-for i in range(0, 10):
-    col = randint(0, 4)
-    val = randint(2000, 3000)
-
-    data = [None, None, None, None, None]
-    data[col] = val
-
-    key = choice(keys)
-    query.update(key, *data)
-    expected[key][col] = val
+    db = Database()
+    db.open('~/ECS165')
+    grades_table = db.tables["Grades"]
+    query = Query(grades_table)
 
 
-db.close()
+    # Measuring Insert Performance
+    insert_time_0 = process_time()
+    for i in range(100, 200):
+        data = [i, i*10, i*20, i*30, i*40]
+        query.insert(*data)
 
-db = Database()
-db.open('~/ECS165')
-grades_table = db.tables["Grades"]
-query = Query(grades_table)
+        keys.append(i)
+        expected[i] = data
+    insert_time_1 = process_time()
 
-success = 0
-for key in keys:
-    result = query.select(key, [1,1,1,1,1])[0].columns
-    if result != expected[key]:
-        raise Exception("Didn't match ):")
-    else:
-        success += 1
+    print("Inserting 10k records took:  \t\t\t", insert_time_1 - insert_time_0)
 
-print(success,'/',len(keys),' were read successfully :)')
+    # Measuring update Performance
+
+    update_time_0 = process_time()
+    for i in range(0, 10):
+        col = randint(0, 4)
+        val = randint(2000, 3000)
+
+        data = [None, None, None, None, None]
+        data[col] = val
+
+        key = choice(keys)
+        query.update(key, *data)
+        expected[key][col] = val
 
 
+    db.close()
 
+    db = Database()
+    db.open('~/ECS165')
+    grades_table = db.tables["Grades"]
+    query = Query(grades_table)
+
+    success = 0
+    for key in keys:
+        result = query.select(key, [1,1,1,1,1])[0].columns
+        if result != expected[key]:
+            raise Exception("Didn't match ):")
+        else:
+            success += 1
+
+    print(success,'/',len(keys),' were read successfully :)')
+
+def test2():
+    db = Database()
+
+    grades_table = db.create_table('Grades', 5, 0)
+    query = Query(grades_table)
+
+    expected = {}
+    keys = []
+
+
+    print('START FIRST SELECT')
+
+    insert_time_0 = process_time()
+    for i in range(0, 5000):
+        data = [i, i*10, i*20, i*30, i*40]
+        query.insert(*data)
+
+        keys.append(i)
+        expected[i] = data
+    insert_time_1 = process_time()
+
+    for i in range(100):
+
+        # update
+        col = randint(0, 4)
+        val = randint(0, 100)
+
+        data = [None, None, None, None, None]
+        data[col] = val
+
+        query.update(9399395, *data)
+        expected[col] = val
+        print('{0:>20} : {1:<10}'.format('EXPECTED', str(expected)))
+
+        time.sleep(0.1)
+
+    stop = True
+    print('END FIRST SELECT')
+
+    # [1, 100, 88, 7, 200]
+
+test2()
 
 # select_times_before = []
 # agg_times_before = []
