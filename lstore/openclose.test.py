@@ -29,7 +29,7 @@ except:
 query = Query(grades_table)
 keys = []
 
-db.my_manager.rw_test()
+# db.my_manager.rw_test()
 print('Done opening database')
 
 extra = 0

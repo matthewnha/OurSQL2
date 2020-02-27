@@ -91,7 +91,7 @@ class DiskManager:
             key_col = int_from_bytes(database_directory_file.read(CELL_SIZE_BYTES))
             num_columns = int_from_bytes(database_directory_file.read(CELL_SIZE_BYTES))
 
-            new_table = Table(table_name,num_columns,key_col)
+            new_table = Table(table_name,num_columns,key_col, self)
             self.import_table(new_table) # type : Table
 
             num_page_ranges = int_from_bytes(database_directory_file.read(CELL_SIZE_BYTES))
@@ -170,7 +170,7 @@ class DiskManager:
 
     def import_table(self, table):
         try:
-            meta_file = open(self.database_folder + sanitize(table.name) + '/' + sanitize(table.name) + '_meta', 'r+b')
+            meta_file = open(self.get_tablemeta_filepath(table.name), 'r+b')
         except FileNotFoundError:
             return False
 
@@ -241,10 +241,10 @@ class DiskManager:
             return False
 
         try:
-            binary_file = open(self.database_folder + sanitize(table_name) + '/' + sanitize(table_name) + "_meta", 'w+b')
+            binary_file = open(self.get_tablemeta_filepath(table_name), 'w+b')
         except FileNotFoundError:
             self.make_table_folder(table_name)
-            binary_file = open(self.database_folder + sanitize(table_name) + '/' + sanitize(table_name) + "_meta", 'w+b')
+            binary_file = open(self.get_tablemeta_filepath(table_name), 'w+b')
 
         data = bytearray()
 
@@ -318,16 +318,50 @@ class DiskManager:
         return True
 
     # Todo
-    def write_page_range(self, pagerange, pagerange_num, table_name):
+    def write_page_range(self, pr, pagerange_num, table_name):
         # print("Here")
         try:
-            binary_file = open(self.database_folder + "/" + sanitize(table_name) + "/" + "pagerange_" + str(pagerange_num), "w+b")
+            binary_file = open(self.get_pr_filepath(table_name, pagerange_num), "w+b")
         except FileNotFoundError:
             return False
 
-        data = encode_pagerange(pagerange)
+        # data = encode_pagerange(pagerange)
 
-        binary_file.write(data)
+        # binary_file.write(data)
+
+        #
+        # Write Meta
+        #
+        BYTES_base_page_count = int_to_bytes(pr.base_page_count)
+        binary_file.write(BYTES_base_page_count)
+        BYTES_tail_page_count = int_to_bytes(pr.tail_page_count)
+        binary_file.write(BYTES_tail_page_count)
+
+        #
+        # Write Base Pages
+        #
+
+        BYTES_base_pages = b''
+        for i in range(pr.base_page_count):
+            page = pr.base_pages[i]
+            if page.is_dirty:
+                # BYTES_base_pages += encode_page(page)  # 8 + PAGE_SIZE
+                binary_file.write(encode_page(page))
+            else:
+                binary_file.seek(SIZE_ENCODED_PAGE, 1)
+
+        #
+        # Write Tail Pages
+        #
+
+        for i in range(pr.tail_page_count):
+            page = pr.tail_pages[i]
+            if page.is_dirty:
+                # BYTES_base_pages += encode_page(page)  # 8 + PAGE_SIZE
+                binary_file.write(encode_page(page))
+            else:
+                binary_file.seek(SIZE_ENCODED_PAGE, 1)
+        
         binary_file.close()
 
         return True
@@ -350,12 +384,12 @@ class DiskManager:
 
 
     # Todo
-    def write_page(self, page, pid, table, table_folder, num_base_pages = None):
+    def write_page(self, pid, page, table, table_name, num_base_pages = None):
         if page.data == None:
             raise Exception("Page not loaded")
         
         _, inner_idx, pr_idx = pid
-        binary_file = open(self.database_folder + "/" + table_folder + "/" + "pagerange_" + str(pr_idx), "w+b")
+        binary_file = open(self.get_pr_filepath(table_name, pr_idx), "w+b")
 
         if num_base_pages == None:
             num_base_pages = table.page_ranges[pr_idx].base_page_count
@@ -373,11 +407,11 @@ class DiskManager:
         print('pause')
 
     # Todo
-    def import_page(self, page, pid, table, table_folder, num_base_pages = None):
+    def import_page(self, pid, page, table, table_name, num_base_pages = None):
         _, inner_idx, pr_idx = pid
 
         try:
-            binary_file = open(self.database_folder + "/" + table_folder + "/" + "pagerange_" + str(pr_idx), 'r+b')
+            binary_file = open(self.get_pr_filepath(table_name, pr_idx), 'r+b')
         except FileNotFoundError:
             return False
 
@@ -394,12 +428,12 @@ class DiskManager:
         data = binary_file.read(PAGE_SIZE)
 
         page.num_records = num_records
-        page.data = data
+        page.data = bytearray(data)
+        page.is_loaded = True
         # todo: is_dirty, pinning
 
         binary_file.close()
-
-        print('pause')
+        return True
 
     def rw_test(self):
         og_page = Page()
@@ -408,22 +442,28 @@ class DiskManager:
         og_page.write(itb(222))
         og_page.write(itb(333))
 
-        self.write_page(og_page, (0, 0, 0), None, 'Grades', 16)
+        self.write_page((0,0,0), og_page, None, 'Grades', 16)
 
         new_page = Page()
-        self.import_page(new_page, (0,0,0), None, 'Grades', 16)
+        self.import_page((0,0,0), new_page, None, 'Grades', 16)
 
         results = compare_pages(og_page, new_page)
         print(results)
 
 
     #Todo
-    def import_page_ranges(self, pagerange_num, table_folder):
+    def import_page_ranges(self, pagerange_num, table_name):
 
         try:
-            binary_file = open(self.database_folder + sanitize(table_folder) + "/" + "pagerange_" + str(pagerange_num), "r+b")
+            binary_file = open(self.get_pr_filepath(table_name, pagerange_num), "r+b")
         except FileNotFoundError:
-            raise Exception('Pagerange file not found', sanitize(table_folder), pagerange_num)
+            raise Exception('Pagerange file not found', sanitize(table_name), pagerange_num)
 
         return decode_pagerange(binary_file.read())
 
+
+    def get_pr_filepath(self, table_name, pr_idx):
+        return self.database_folder + sanitize(table_name) + "/" + "pagerange_" + str(pr_idx)
+
+    def get_tablemeta_filepath(self, table_name):
+        return self.database_folder + sanitize(table_name) + '/' + sanitize(table_name) + "_meta"

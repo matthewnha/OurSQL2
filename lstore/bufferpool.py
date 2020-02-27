@@ -1,6 +1,7 @@
 from page import Page
 from pagerange import PageRange
 from config import *
+from util import *
 
 class BufferPool:
 
@@ -14,13 +15,14 @@ class BufferPool:
         self.table = table # type: Table
 
     def add_page(self, pid, page):
-        if self.num_pool_pages < MAX_POOL_PAGES:
+        if self.num_pool_pages >= MAX_POOL_PAGES:
             self.pop_page() # Choose page to remove from pool
 
         if page.is_loaded:
-            self.pages.append(page)
+            self.pages.append(pid)
+            self.num_pool_pages += 1
         else:
-            self.load_from_disk(pid,page)
+            self.load_from_disk(pid, page)
 
     def pop_page(self) -> Page:
         '''
@@ -29,25 +31,26 @@ class BufferPool:
 
         # todo: choose a page to pop. pops oldest page for now, get page pid
         i = 0
-        page_to_pop = self.pages[i]
-        while(self.pins[page_to_pop.pid] > 0):
-            page_to_pop = self.pages[i]
+        pid = self.pages[i]
+        pid[0] = 0
+        page_to_pop = self.table.get_page(pid)
+
+        while(encode_pid(pid) in self.pins and self.pins[encode_pid(pid)] > 0):
+            pid = self.pages[i]
+            pid[0] = 0
+            page_to_pop = self.table.get_page(pid)
             i += 1
 
-        page_to_pop = self.pages.pop(i)
-
         if page_to_pop.is_dirty:
-            self.write_to_disk(page_to_pop.pid, page_to_pop)
+            self.write_to_disk(pid, page_to_pop)
 
         page_to_pop.data = None
         page_to_pop.is_loaded = False
-        del self.pins[page_to_pop.pid]
-        self.num_pool_pages += -1
-
-        pass
+        self.pins[encode_pid(pid)] = 0
+        self.num_pool_pages -= 1
     
     def write_to_disk(self, pid, page):
-        success = self.disk.write_page(pid, self.table, table.name)
+        success = self.disk.write_page(pid, page, self.table, self.table.name)
         page.is_dirty = False
 
         return success
@@ -64,11 +67,11 @@ class BufferPool:
 
 
     def load_from_disk(self, pid, page):
-        if self.num_pool_pages < MAX_POOL_PAGES:
+        if self.num_pool_pages >= MAX_POOL_PAGES:
+            print('Buffer full, must pop a page')
             self.pop_page() # Choose page to remove from pool
 
-        # todo: get pid
-        success = self.disk.import_page(pid, self.table, table.name)
+        success = self.disk.import_page(pid, page, self.table, self.table.name)
 
         if not success:
             raise Exception("Page didn't exist on disk")

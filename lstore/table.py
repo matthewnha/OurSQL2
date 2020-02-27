@@ -145,6 +145,13 @@ class Table:
 
         return (pid, page)
 
+    def get_open_tail_page(self, pr, pr_idx):
+        ind_inner_idx, page = pr.get_open_tail_page()
+        pid = [None, ind_inner_idx, pr_idx]
+        self.bp.add_page(pid, page)
+        return ind_inner_idx, page
+
+
     def create_row(self, columns_data):
         key = columns_data[self.key_col]
 
@@ -252,7 +259,8 @@ class Table:
             # Get tail pages for meta info
             _,_,page_range_idx = base_record.columns[INDIRECTION_COLUMN]
             page_range = self.page_ranges[page_range_idx] # type: PageRange
-            ind_inner_idx, indirection_page = page_range.get_open_tail_page()
+            # ind_inner_idx, indirection_page = page_range.get_open_tail_page()
+            ind_inner_idx, indirection_page = self.get_open_tail_page(page_range, page_range_idx)
             indirection_pid = [None, ind_inner_idx, page_range_idx]
             
             # write indirection
@@ -263,7 +271,8 @@ class Table:
 
             _,_,page_range_idx = base_record.columns[RID_COLUMN]
             page_range = self.page_ranges[page_range_idx] # type: PageRange
-            rid_inner_idx, rid_page = page_range.get_open_tail_page()
+            # rid_inner_idx, rid_page = page_range.get_open_tail_page()
+            rid_inner_idx, rid_page = self.get_open_tail_page(page_range, page_range_idx)
             rid_pid = [None, rid_inner_idx, page_range_idx]
 
             # write rid
@@ -277,7 +286,8 @@ class Table:
 
             _,_,page_range_idx = base_record.columns[TIMESTAMP_COLUMN]
             page_range = self.page_ranges[page_range_idx] # type: PageRange
-            time_inner_idx, time_page = page_range.get_open_tail_page()
+            # time_inner_idx, time_page = page_range.get_open_tail_page()
+            time_inner_idx, time_page = self.get_open_tail_page(page_range, page_range_idx)
             time_pid = [None, time_inner_idx, page_range_idx]
 
             # write Timestamp todo: all timestamps
@@ -290,7 +300,8 @@ class Table:
 
             _,_,page_range_idx = base_record.columns[SCHEMA_ENCODING_COLUMN]
             page_range = self.page_ranges[page_range_idx] # type: PageRange
-            schema_inner_idx, schema_page = page_range.get_open_tail_page()
+            # schema_inner_idx, schema_page = page_range.get_open_tail_page()
+            schema_inner_idx, schema_page = self.get_open_tail_page(page_range, page_range_idx)
             schema_pid = [None, schema_inner_idx, page_range_idx]
 
             # write encoding
@@ -315,7 +326,8 @@ class Table:
                 page_range = self.page_ranges[page_range_idx] # type: PageRange
 
                 # Get/make open tail page from the respective og page range
-                inner_page_idx, tail_page = page_range.get_open_tail_page()
+                # inner_page_idx, tail_page = page_range.get_open_tail_page()
+                inner_page_idx, tail_page = self.get_open_tail_page(page_range, page_range_idx)
                 pid = [None, inner_page_idx, page_range_idx]
                 bytes_to_write = int_to_bytes(update_data[i])
                 # num_records = tail_page.write(bytes_to_write)
@@ -469,7 +481,7 @@ class Table:
             base_rid_page = self.get_page(base_rid_pid)
             base_rid_cell_inx,_,_ = base_record.columns[RID_COLUMN]
 
-            self.bp.handle(base_rid_pid, base_rid_page, base_rid_page.write_to_cell, itb(0),base_rid_cell_inx))
+            self.bp.handle(base_rid_pid, base_rid_page, base_rid_page.write_to_cell, itb(0),base_rid_cell_inx)
             self.key_index[key] = 0
             if 0 in self.page_directory:
                 self.page_directory[0].append(base_record)
