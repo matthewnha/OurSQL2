@@ -11,7 +11,6 @@ class BufferPool:
         self.pins = {}
         self.least_recently_used = None
         self.table = table # type: Table
-        pass
 
     def pop_page(self) -> Page:
         '''
