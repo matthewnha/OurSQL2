@@ -8,8 +8,6 @@ import threading
 import time
 import statistics
 
-import pagerangeencode
-
 # Student Id and 4 grades
 db = Database()
 grades_table = db.create_table('Grades', 5, 0) # Type: Table
@@ -66,11 +64,6 @@ for i in range(0, 10000):
     query.update(choice(keys), *(choice(update_cols)))
 update_time_1 = process_time()
 print("Updating 10k records took:  \t\t\t", update_time_1 - update_time_0)
-
-for pr in grades_table.page_ranges:
-    encoded = pagerangeencode.encode_pagerange(pr)
-    decoded = pagerangeencode.decode_pagerange(encoded)
-    print(pagerangeencode.compare_page_ranges(pr, decoded))
 
 select_times_before = []
 agg_times_before = []
