@@ -35,7 +35,7 @@ class DiskManager:
 
         
     def make_table_folder(self, table_name):
-        table_name = table_name.sanitize(table_name)
+        table_name = sanitize(table_name)
         path = self.database_folder + table_name
         access_rights = 0o755
         try:

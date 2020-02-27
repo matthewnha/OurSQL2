@@ -26,7 +26,7 @@ class Database():
     """
 
     def create_table(self, name, num_columns, key):
-        table = Table(name, num_columns, key)
+        table = Table(name, num_columns, key, self.my_manager)
         self.tables[name] = table
         return table
 
