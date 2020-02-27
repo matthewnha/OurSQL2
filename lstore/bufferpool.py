@@ -68,7 +68,7 @@ class BufferPool:
 
     def load_from_disk(self, pid, page):
         if self.num_pool_pages >= MAX_POOL_PAGES:
-            print('Buffer full, must pop a page')
+            # print('Buffer full, must pop a page')
             self.pop_page() # Choose page to remove from pool
 
         success = self.disk.import_page(pid, page, self.table, self.table.name)
