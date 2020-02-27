@@ -24,6 +24,9 @@ except:
 query = Query(grades_table)
 keys = []
 
+# print('done loading')
+# db.my_manager.rw_test()
+
 # Measuring Insert Performance
 insert_time_0 = process_time()
 for i in range(0, 10000):

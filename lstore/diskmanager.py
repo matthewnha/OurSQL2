@@ -228,7 +228,7 @@ class DiskManager:
             metarecord = MetaRecord(rid,key,columns)
 
             if(not tail_flag):
-
+                table.key_index[key] = rid
             
             table.page_directory[rid] = metarecord
 
