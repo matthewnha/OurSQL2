@@ -35,12 +35,7 @@ class DiskManager:
 
         
     def make_table_folder(self, table_name):
-<<<<<<< HEAD
-        table_name = sanitize(table_name)
-        path = self.database_folder + table_name
-=======
         path = self.database_folder + sanitize(table_name)
->>>>>>> 43455ea5a12809c48827d1f82b26e164f50dd599
         access_rights = 0o755
         try:
             os.mkdir(path, access_rights)
