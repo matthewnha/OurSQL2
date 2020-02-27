@@ -136,7 +136,8 @@ class Table:
             if (None == page):
                 raise Exception('No page returned', cell_idx, inner_page_idx, page_range_idx, outer_page_idx, self.num_rows, col_idx)
             
-        pid = [cell_idx, inner_page_idx, page_range_idx]  
+        pid = [cell_idx, inner_page_idx, page_range_idx]
+
         return (pid, page)
 
     def create_row(self, columns_data):
