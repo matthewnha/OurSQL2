@@ -17,7 +17,7 @@ for i in range(10000):
     inserted.append(cols)
 
 for row in inserted:
-    fetched = query.select(row[0], [1,1,1,1,1])[0]['columns']
+    fetched = query.select(row[0], [1,1,1,1,1])[0].columns
 if fetched != row:
     raise Exception('Not match', fetched, row)
 else:
@@ -29,11 +29,11 @@ query.update(9399395, *([None, 99, 88, None, None]))
 query.update(9399395, *([None, 100, None, None, None]))
 query.update(9399395, *([None, None, None, None, 200]))
 query.update(9399395, *([1, None, None, None, None]))
-print(query.select(9399395,[1,1,1,1,1]))
+print(query.select(9399395,[1,1,1,1,1])[0].columns)
 query.delete(9399395)
 #print(query.select(9399395,[1,1,1,1,1]))
-print(query.select(947050,[0,0,1,1,1]))
-print(query.select(947111,[0,0,1,1,1]))
+print(query.select(947050,[0,0,1,1,1])[0].columns)
+print(query.select(947111,[0,0,1,1,1])[0].columns)
 print(query.sum(947043,947111,3))
 # print(query.select(9399395, [1,1,1,1,1])[0])
 

@@ -134,7 +134,7 @@ class BufferPool:
         # todo: get pid
         self.disk.import_page(page, page_key, self.table, self.table.name)
 
-
+        page.is_loaded = True
         # if not success:
         #     raise Exception("Page didn't exist on disk")
         page_key = (pid[1],pid[2])
@@ -143,6 +143,7 @@ class BufferPool:
         # self.page_index[page_key] = index
         self.pins[page_key] = 0
         self.num_pool_pages += 1
+
 
         # print("loaded page and added to bufferpool")
         # return page

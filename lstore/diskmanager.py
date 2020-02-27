@@ -13,7 +13,7 @@ NUMBER_OF_DEXS = 3
 class DiskManager:
 
     def __init__(self,  dir = "database_files"):
-        self.files = []
+        # self.files = []
         self.my_database = None # type : db
         self.page_ranges = []
 

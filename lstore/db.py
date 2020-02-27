@@ -17,6 +17,7 @@ class Database():
 
     def close(self):
         self.my_manager.close_db()
+        del self
 
     """
     # Creates a new table

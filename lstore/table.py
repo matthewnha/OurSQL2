@@ -363,11 +363,14 @@ class Table:
             # Start acquire lock ===========
 
             lock_attempts += 1
-            acquire_resp = acquire_all([self.merge_lock, self.rw_locks[rid]])
-            if acquire_resp is False:
-                continue
+            try:
+                acquire_resp = acquire_all([self.merge_lock, self.rw_locks[rid]])
+                if acquire_resp is False:
+                    continue
 
-            locks = acquire_resp
+                locks = acquire_resp
+            except KeyError: 
+                print("Haven't imported locks yet")
             
             # Acquired lock ===========
 
@@ -376,10 +379,11 @@ class Table:
             base_enc_pid = base_record.columns[SCHEMA_ENCODING_COLUMN]
             base_enc_bytes = self.read_pid(base_enc_pid)
             base_enc_binary = bin(int_from_bytes(base_enc_bytes))[2:].zfill(self.num_columns)
-
+            print(base_enc_pid, "Looking for data using schema",base_enc_binary)
             tps_all = resp.copy()
 
             for data_col_idx, is_dirty in enumerate(base_enc_binary):
+                
                 if need[data_col_idx] == 0:
                     continue
 
