@@ -202,7 +202,7 @@ class DiskManager:
                     for j in range(NUMBER_OF_DEXS):
                         column.append(int_from_bytes(meta_file.read(CELL_SIZE_BYTES)))
 
-                    columns.append(column)
+                columns[i] = column
 
             # Read columns of tail record
             else:
@@ -403,7 +403,7 @@ class DiskManager:
         return page
 
     #Todo
-    def import_page_ranges(self, pagerange_num, table_folder, pagerange = PageRange(0)):
+    def import_page_ranges(self, pagerange_num, table_folder):
 
         try:
             binary_file = open(self.database_folder + "/" + table_folder + "/" + "pagerange_" + str(pagerange_num), "r+b")
@@ -443,8 +443,4 @@ class DiskManager:
         # else:
         #     del pagerange
         #     return None
-
-        binary_file.close()
-
-        return pagerange
 
