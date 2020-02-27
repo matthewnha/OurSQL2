@@ -5,10 +5,9 @@ from config import *
 
 from random import choice, randint, sample, seed
 from colorama import Fore, Back, Style
-import filereader
-
 # Student Id and 4 grades   
 db = Database()
+db.open('My_DB')
 grades_table = db.create_table('Grades', 5, 0)
 query = Query(grades_table)
 
@@ -93,20 +92,20 @@ for key in records:
         # else:
         #     print('update on', original, 'and', updated_columns, ':', record.columns) 
         # updated_columns[i] = None
-db.my_manager.write_db_directory()
+# db.my_manager.write_db_directory()
 
-for key in db.tables.keys():
-    print(key, "Table")
-    db.my_manager.write_table_meta(key)
-    table = db.tables[key] # type : Table
-    print("Num pageranges",len(table.page_ranges))
-    for pr in table.page_ranges:
-        # print("love")
-        db.my_manager.write_page_range(pr,key)
+# for key in db.tables.keys():
+#     print(key, "Table")
+#     db.my_manager.write_table_meta(key)
+#     table = db.tables[key] # type : Table
+#     print("Num pageranges",len(table.page_ranges))
+#     for pr in table.page_ranges:
+#         # print("love")
+#         db.my_manager.write_page_range(pr,key)
 
 
 
 # copy_table = filereader.read_files()
-
+db.close()
 print('done')
 

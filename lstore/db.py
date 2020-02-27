@@ -11,8 +11,7 @@ class Database():
         pass
 
     def open(self, path):
-        self.my_manager = DiskManager(path)
-        self.my_manager.my_database = self
+        self.my_manager.set_path(path)
         self.my_manager.open_db()
         pass
 

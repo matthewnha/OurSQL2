@@ -12,25 +12,38 @@ NUMBER_OF_DEXS = 3
 
 class DiskManager:
 
-    def __init__(self,  dir = "."):
+    def __init__(self,  dir = "database_files"):
         self.files = []
         self.my_database = None # type : db
         self.page_ranges = []
-        self.database_folder = dir + '/'
-        access_rights = 0o755
 
-        path_list = self.database_folder.split('/')
+        if(dir[-1] != '/'):
+            dir += '/'
+            
+        self.database_folder = dir
+
+
+
+    def set_path(self, path):
+        access_rights = 0o755
+        if(path[-1] != '/'):
+            path += '/'
+        path_list = path.split('/')
         if path_list[0] == '~':
             path_list[0] = os.getenv('HOME')
         self.database_folder = '/'.join(path_list)
 
-        print(self.database_folder)
+        
+    def make_table_folder(self, table_name):
+        path = self.database_folder + table_name
+        access_rights = 0o755
         try:
-            os.mkdir(self.database_folder)
+            os.mkdir(path, access_rights)
         except OSError:
-            print ("Creation of the directory %s failed" % self.database_folder)
+            print ("Creation of the directory %s failed" % path)
         else:
-            print ("Successfully created the directory %s" % self.database_folder)
+            print ("Successfully created the directory %s" % path)
+
 
     # Todo
     def write_to_disk(self, table_name, page_pid):
@@ -51,21 +64,20 @@ class DiskManager:
         self.write_page(pagerange, page, page_idx, type_of_page, table_name)
         pass
 
-    def make_table_folder(self, table_name):
-        path = self.database_folder + '/' + table_name
-        access_rights = 0o755
-        try:
-            os.mkdir(path, access_rights)
-        except OSError:
-            print ("Creation of the directory %s failed" % path)
-        else:
-            print ("Successfully created the directory %s" % path)
+    
     # Todo
     def load_from_disk(self, path, page_pid):
         pass
 
 
     def open_db(self):
+        try:
+            os.mkdir(self.database_folder)
+        except OSError:
+            print ("Creation of the directory %s failed" % self.database_folder)
+        else:
+            print ("Successfully created the directory %s" % self.database_folder)
+
         try: 
             database_directory_file = open(self.database_folder + "Database_Directory", 'r+b')
         except FileNotFoundError:
@@ -239,7 +251,7 @@ class DiskManager:
             binary_file = open(self.database_folder + table_name + '/' + table_name + "_meta", 'w+b')
         except FileNotFoundError:
             self.make_table_folder(table_name)
-            binary_file = open(self.database_folder + '/' + table_name + '/' + table_name + "_meta", 'w+b')
+            binary_file = open(self.database_folder + table_name + '/' + table_name + "_meta", 'w+b')
 
         data = bytearray()
 
