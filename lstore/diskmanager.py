@@ -332,56 +332,90 @@ class DiskManager:
 
         return True
 
+    def get_page_offset_in_pr(self, pid, num_base_pages):
+        _, inner_idx, pr_idx = pid
+        
+        idx = 0
+        if inner_idx >= PAGE_RANGE_MAX_BASE_PAGES:
+            idx = num_base_pages - 1
+            idx += inner_idx - PAGE_RANGE_MAX_BASE_PAGES
+
+        # Skip meta
+        offset = PR_META_OFFSETS[-1]
+
+        # Go to actual offset
+        offset += SIZE_ENCODED_PAGE * idx
+
+        return offset
+
+
     # Todo
-    def write_page(self, pagerange, page, inner_page_idx, base_or_tail, table_folder):
+    def write_page(self, page, pid, table, table_folder, num_base_pages = None):
         if page.data == None:
             raise Exception("Page not loaded")
-
-        binary_file = open(self.database_folder + "/" + sanitize(table_folder) + "/" + "pagerange_" + str(pagerange.pagerange_id), "r+b")
-
-        data = bytearray()
-
-        if base_or_tail == 'base':
-            if inner_page_idx < pagerange.base_page_count:
-                page_location = PAGE_RANGE_OFFSET * CELL_SIZE_BYTES + inner_page_idx * (PAGE_SIZE + PAGE_OFFSET + 1) - CELL_SIZE_BYTES
-            else:
-                return False
-
-        elif base_or_tail == 'tail': 
-            if inner_page_idx < pagerange.tail_page_count: 
-                page_location = PAGE_RANGE_OFFSET * CELL_SIZE_BYTES + (pagerange.base_page_count + inner_page_idx) * (PAGE_SIZE + PAGE_OFFSET + 2) - CELL_SIZE_BYTES
-            else:
-                return False
         
-        binary_file.seek(page_location)
-        binary_file.write(int_to_bytes(page.num_records))
-        binary_file.write(page.data)
+        _, inner_idx, pr_idx = pid
+        binary_file = open(self.database_folder + "/" + table_folder + "/" + "pagerange_" + str(pr_idx), "w+b")
+
+        if num_base_pages == None:
+            num_base_pages = table.page_ranges[pr_idx].base_page_count
+
+        offset = self.get_page_offset_in_pr(pid, num_base_pages)
+        binary_file.seek(offset)
+        
+        # What to write
+
+        encoded = encode_page(page)
+        binary_file.write(encoded)
+
         binary_file.close()
 
+        print('pause')
+
     # Todo
-    def import_page(self, pagerange, inner_page_idx, base_or_tail, table_folder, page = Page(True)):
+    def import_page(self, page, pid, table, table_folder, num_base_pages = None):
+        _, inner_idx, pr_idx = pid
+
         try:
-            binary_file = open(self.database_folder + "/" + sanitize(table_folder) + "/" + "pagerange_" + pagerange.pagerange_id, 'r+b')
+            binary_file = open(self.database_folder + "/" + table_folder + "/" + "pagerange_" + str(pr_idx), 'r+b')
         except FileNotFoundError:
             return False
 
-        data = bytearray()
+        if num_base_pages == None:
+            num_base_pages = table.page_ranges[pr_idx].base_page_count
+
+        offset = self.get_page_offset_in_pr(pid, num_base_pages)
         
-        if base_or_tail == 'base':
-            if inner_page_idx < pagerange.base_page_count:
-                page_location = PAGE_RANGE_OFFSET * CELL_SIZE_BYTES + inner_page_idx * (PAGE_SIZE + PAGE_OFFSET + 1) - CELL_SIZE_BYTES
-        elif base_or_tail == 'tail': 
-            if inner_page_idx < pagerange.tail_page_count: 
-                page_location = PAGE_RANGE_OFFSET * CELL_SIZE_BYTES + (pagerange.base_page_count + inner_page_idx) * (PAGE_SIZE + PAGE_OFFSET + 2) - CELL_SIZE_BYTES
+        # Read num_records
+        binary_file.seek(offset)
+        num_records = ifb(binary_file.read(8))
         
-        binary_file.seek(page_location)
-        page.num_records = binary_file.read(CELL_SIZE_BYTES)
-        
-        data += binary_file.read(PAGE_SIZE)
-        page.load(data)
+        # Read data
+        data = binary_file.read(PAGE_SIZE)
+
+        page.num_records = num_records
+        page.data = data
+        # todo: is_dirty, pinning
+
         binary_file.close()
 
-        return page
+        print('pause')
+
+    def rw_test(self):
+        og_page = Page()
+        og_page.write_tps(999)
+        og_page.write(itb(111))
+        og_page.write(itb(222))
+        og_page.write(itb(333))
+
+        self.write_page(og_page, (0, 0, 0), None, 'Grades', 16)
+
+        new_page = Page()
+        self.import_page(new_page, (0,0,0), None, 'Grades', 16)
+
+        results = compare_pages(og_page, new_page)
+        print(results)
+
 
     #Todo
     def import_page_ranges(self, pagerange_num, table_folder):
