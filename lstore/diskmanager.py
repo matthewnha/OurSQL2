@@ -194,15 +194,15 @@ class DiskManager:
             
             # print('tail flag', tail_flag)
             # Read columns of base record
-            if not tail_flag:
 
+            if not tail_flag:
                 for i in range(table.num_total_cols):          
                     column = []
 
                     for j in range(NUMBER_OF_DEXS):
                         column.append(int_from_bytes(meta_file.read(CELL_SIZE_BYTES)))
 
-                columns[i] = column
+                    columns[i] = column
 
             # Read columns of tail record
             else:
@@ -220,7 +220,7 @@ class DiskManager:
                         for j in range(NUMBER_OF_DEXS):
                             column.append(int_from_bytes(meta_file.read(CELL_SIZE_BYTES)))
 
-                    columns[i] = column
+                        columns[i] = column
 
             metarecord = MetaRecord(rid,key,columns)
 
