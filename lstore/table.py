@@ -110,7 +110,9 @@ class Table:
                 page_range = self.page_ranges[page_range_idx] # type: PageRange
             except IndexError:
                 page_range = PageRange()
+                index = len(self.page_ranges)
                 self.page_ranges.append(page_range)
+                self.bp.write_new_page_range(page_range, index)
 
             # New cell's page index in respect to pages in page range
             inner_page_idx = get_inner_index_from_outer_index(outer_page_idx, PAGE_RANGE_MAX_BASE_PAGES)
@@ -118,12 +120,13 @@ class Table:
             cell_idx = 0
             created_inner_page_idx, page = page_range.create_base_page()
 
+            # print("Created new base page")
             if created_inner_page_idx != inner_page_idx:
                 raise Exception('Created inner page index is not the same as the expected inner page index',
                     page.get_num_records(),
                     created_inner_page_idx, cell_idx, inner_page_idx, page_range_idx, outer_page_idx)
             
-            base_page_is_new = True
+            # base_page_is_new = True
 
         else: # there's space in the last used page
             outer_page_idx = prev_outer_page_idx
@@ -139,8 +142,9 @@ class Table:
             
         pid = [cell_idx, inner_page_idx, page_range_idx]
 
-        if base_page_is_new:
-            self.bp.add_page(pid,page)
+        # if base_page_is_new or not page.is_loaded:
+        # print("Trying to add", pid, "to bufferpool")
+        self.bp.add_page(pid,page)
 
         return (pid, page)
 
@@ -242,8 +246,8 @@ class Table:
 
             # Meta columns
 
-            # Get tail pages for meta info
-            _,_,page_range_idx = base_record.columns[INDIRECTION_COLUMN]
+            # Get tail pages for base_record.columns[INDIRECTION_COLUMN]
+            _,_,page_range_idx = base_record.columns[RID_COLUMN]
             page_range = self.page_ranges[page_range_idx] # type: PageRange
             ind_inner_idx, indirection_page = page_range.get_open_tail_page()
             indirection_pid = [None, ind_inner_idx, page_range_idx]
@@ -252,6 +256,7 @@ class Table:
             num_records_in_page = indirection_page.write(prev_update_rid_bytes)
             ind_cell_idx = num_records_in_page - 1
             indirection_pid[0] = ind_cell_idx
+            self.bp.add_page(indirection_pid,indirection_page)
 
             _,_,page_range_idx = base_record.columns[RID_COLUMN]
             page_range = self.page_ranges[page_range_idx] # type: PageRange
@@ -265,6 +270,7 @@ class Table:
             num_records_in_page = rid_page.write(rid_in_bytes)
             rid_cell_idx = num_records_in_page - 1
             rid_pid[0] = rid_cell_idx
+            self.bp.add_page(rid_pid,rid_page)
 
             _,_,page_range_idx = base_record.columns[TIMESTAMP_COLUMN]
             page_range = self.page_ranges[page_range_idx] # type: PageRange
@@ -277,6 +283,7 @@ class Table:
             num_records_in_page = time_page.write(bytes_to_write)
             time_cell_idx = num_records_in_page - 1
             time_pid[0] = time_cell_idx
+            self.bp.add_page(time_pid,time_page)
 
             _,_,page_range_idx = base_record.columns[SCHEMA_ENCODING_COLUMN]
             page_range = self.page_ranges[page_range_idx] # type: PageRange
@@ -288,6 +295,7 @@ class Table:
             num_records_in_page = schema_page.write(bytes_to_write)
             schema_cell_idx = num_records_in_page - 1
             schema_pid[0] = schema_cell_idx
+            self.bp.add_page(schema_pid,schema_page)
 
             meta_columns = [indirection_pid, rid_pid, time_pid, schema_pid]
 
@@ -309,7 +317,8 @@ class Table:
                 num_records = tail_page.write(bytes_to_write)
                 cell_idx = num_records - 1
 
-                pid = [cell_idx, inner_page_idx, page_range_idx]  
+                pid = [cell_idx, inner_page_idx, page_range_idx]
+                self.bp.add_page(pid,tail_page)
                 data_columns.append(pid)
 
             tail_record = MetaRecord(new_rid, key, meta_columns + data_columns)

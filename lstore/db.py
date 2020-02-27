@@ -28,6 +28,7 @@ class Database():
     def create_table(self, name, num_columns, key):
         table = Table(name, num_columns, key, self.my_manager)
         self.tables[name] = table
+        self.my_manager.make_table_folder(name)
         return table
 
     """

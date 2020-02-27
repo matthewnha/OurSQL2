@@ -91,7 +91,7 @@ class DiskManager:
             key_col = int_from_bytes(database_directory_file.read(CELL_SIZE_BYTES))
             num_columns = int_from_bytes(database_directory_file.read(CELL_SIZE_BYTES))
 
-            new_table = Table(table_name,num_columns,key_col)
+            new_table = Table(table_name,num_columns,key_col, self)
             self.import_table(new_table) # type : Table
 
             num_page_ranges = int_from_bytes(database_directory_file.read(CELL_SIZE_BYTES))
@@ -332,8 +332,8 @@ class DiskManager:
 
         return True
 
-    def get_page_offset_in_pr(self, pid, num_base_pages):
-        _, inner_idx, pr_idx = pid
+    def get_page_offset_in_pr(self, page_key, num_base_pages):
+        inner_idx, pr_idx = page_key
         
         idx = 0
         if inner_idx >= PAGE_RANGE_MAX_BASE_PAGES:
@@ -350,17 +350,18 @@ class DiskManager:
 
 
     # Todo
-    def write_page(self, page, pid, table, table_folder, num_base_pages = None):
+    def write_page(self, page, page_key, table, table_folder, num_base_pages = None):
         if page.data == None:
             raise Exception("Page not loaded")
         
-        _, inner_idx, pr_idx = pid
-        binary_file = open(self.database_folder + "/" + table_folder + "/" + "pagerange_" + str(pr_idx), "w+b")
+        inner_idx, pr_idx = page_key
+        
+        binary_file = open(self.database_folder + table_folder + "/" + "pagerange_" + str(pr_idx), "w+b")
 
         if num_base_pages == None:
             num_base_pages = table.page_ranges[pr_idx].base_page_count
 
-        offset = self.get_page_offset_in_pr(pid, num_base_pages)
+        offset = self.get_page_offset_in_pr(page_key, num_base_pages)
         binary_file.seek(offset)
         
         # What to write
@@ -373,8 +374,8 @@ class DiskManager:
         print('pause')
 
     # Todo
-    def import_page(self, page, pid, table, table_folder, num_base_pages = None):
-        _, inner_idx, pr_idx = pid
+    def import_page(self, page, page_key, table, table_folder, num_base_pages = None):
+        inner_idx, pr_idx = page_key
 
         try:
             binary_file = open(self.database_folder + "/" + table_folder + "/" + "pagerange_" + str(pr_idx), 'r+b')
@@ -384,14 +385,14 @@ class DiskManager:
         if num_base_pages == None:
             num_base_pages = table.page_ranges[pr_idx].base_page_count
 
-        offset = self.get_page_offset_in_pr(pid, num_base_pages)
+        offset = self.get_page_offset_in_pr(page_key, num_base_pages)
         
         # Read num_records
         binary_file.seek(offset)
         num_records = ifb(binary_file.read(8))
         
         # Read data
-        data = binary_file.read(PAGE_SIZE)
+        data = bytearray(binary_file.read(PAGE_SIZE))
 
         page.num_records = num_records
         page.data = data
@@ -408,10 +409,10 @@ class DiskManager:
         og_page.write(itb(222))
         og_page.write(itb(333))
 
-        self.write_page(og_page, (0, 0, 0), None, 'Grades', 16)
+        self.write_page(og_page, (0,0), None, 'Grades', 16)
 
         new_page = Page()
-        self.import_page(new_page, (0,0,0), None, 'Grades', 16)
+        self.import_page(new_page, (0,0), None, 'Grades', 16)
 
         results = compare_pages(og_page, new_page)
         print(results)

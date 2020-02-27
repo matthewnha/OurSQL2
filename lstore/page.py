@@ -5,6 +5,7 @@ class Page:
 
     def __init__(self, is_importing = False):
         self.num_records = 0
+        # self.indexes = None
 
         if is_importing:
             self.data = None
@@ -16,6 +17,8 @@ class Page:
 
         self.is_dirty = False
         
+    # def set_pid(self,indexes):
+    #     self.indexes = indexes
 
     def load(self, data, num_records):
         if self.data == None:
