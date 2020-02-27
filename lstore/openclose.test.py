@@ -10,6 +10,10 @@ import statistics
 
 # Student Id and 4 grades
 
+
+file = open('/Users/matthewha/ECS165/Grades/pagerange_0', "r+b")
+content = file.read()
+print('Start stuff')
 db = Database()
 db.open('~/ECS165')
 try:
@@ -17,10 +21,6 @@ try:
 except:
   grades_table = db.create_table('Grades', 5, 0)
 # Student Id and 4 grades
-query = Query(grades_table)
-
-db = Database()
-# grades_table = db.create_table('Grades', 5, 0) # Type: Table
 query = Query(grades_table)
 keys = []
 
