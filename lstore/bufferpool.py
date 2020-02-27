@@ -4,8 +4,9 @@ from config import *
 
 class BufferPool:
 
-    def __init__(self, table):
+    def __init__(self, table, disk):
         self.max_pages = MAX_PAGES
+        self.disk = disk
         self.num_pool_pages = 0
         self.pages = [] # todo: just pop random for now, later organize
         self.pins = {}
@@ -17,30 +18,34 @@ class BufferPool:
         Pops page and decides via ? method (LRU/MRU)
         '''
 
-        # todo: choose a page to pop. pops oldest page for now
+        # todo: choose a page to pop. pops oldest page for now, get page pid
         page_to_pop = self.pages.pop()
-
+        if (page_to_pop.is_dirty):
+            self.write_to_disk(pid, page_to_pop)
         page_to_pop.data = None
         page_to_pop.is_loaded = False
 
         pass
     
-    def write_to_disk(self, page):
-        pass
+    def write_to_disk(self, pid, page):
+        success = self.disk.write_page(pid, self.table, table.name)
+        page.is_dirty = False
 
-    def load_from_disk(self, page):
+        return success
+
+    def load_from_disk(self, pid, page):
         if self.num_pool_pages < MAX_POOL_PAGES:
             self.pop_page() # Choose page to remove from pool
 
-        pid = None # todo: get pid
-        success = self.table.disk.load_page_from_disk(pid)
+        # todo: get pid
+        success = self.disk.import_page(pid, self.table, table.name)
 
         if not success:
             raise Exception("Page didn't exist on disk")
 
         self.pages.append(page)
 
-    def handle(self, page, page_func, *args):
+    def handle(self, page, pid, page_func, *args):
         if not page.is_loaded:
             self.load_from_disk(page)
 

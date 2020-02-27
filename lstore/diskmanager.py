@@ -35,6 +35,7 @@ class DiskManager:
 
         
     def make_table_folder(self, table_name):
+        table_name = table_name.sanitize(table_name)
         path = self.database_folder + table_name
         access_rights = 0o755
         try:
@@ -176,7 +177,9 @@ class DiskManager:
 
         table.prev_rid = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
         table.prev_tid = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
+        table.num_rows = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
         page_directory_size = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
+        
 
 
         tail_flag = False
@@ -225,7 +228,6 @@ class DiskManager:
             metarecord = MetaRecord(rid,key,columns)
 
             if(not tail_flag):
-                table.key_index[key] = rid
 
             
             table.page_directory[rid] = metarecord
@@ -255,6 +257,7 @@ class DiskManager:
         data += int_to_bytes(table.prev_rid) # rid
         data += int_to_bytes(table.prev_tid) # tid
         data += int_to_bytes(len(table.page_directory))
+        data += int_to_bytes(table.num_rows)
 
         # key is the rid and value are the metarecords
         # columns point to the location in data
@@ -327,29 +330,6 @@ class DiskManager:
 
         data = encode_pagerange(pagerange)
 
-        # data = bytearray()
-
-        # data += int_to_bytes(pagerange.base_page_count) # base page count first
-        # data += int_to_bytes(pagerange.tail_page_count) # tail page count second
-
-        # base_string = int_to_bytes(int_from_bytes("basedata".encode('utf-8')))
-
-        # data += base_string
-        # for page in pagerange.base_pages:
-        #     if page != None:
-        #         data += int_to_bytes(page.num_records)
-        #         data += page.data
-            
-
-        # tail_string = int_to_bytes(int_from_bytes("taildata".encode('utf-8')))
-
-        # data += tail_string
-
-        # for page in pagerange.tail_pages:
-        #     if page != None:
-        #         data += int_to_bytes(page.num_records)
-        #         data += page.data
-
         binary_file.write(data)
         binary_file.close()
 
@@ -415,36 +395,4 @@ class DiskManager:
             return False
 
         return decode_pagerange(binary_file.read())
-
-        # current = 0
-        # binary_file.seek(0,0)
-
-        # pagerange.pagerange_id = pagerange_num
-        # pagerange.base_page_count = int_from_bytes(binary_file.read(CELL_SIZE_BYTES))
-        # pagerange.tail_page_count = int_from_bytes(binary_file.read(CELL_SIZE_BYTES))
-
-        # try: 
-        #     base_string = binary_file.read(CELL_SIZE_BYTES).decode('utf-8')
-        #     print(base_string)
-        # except:
-        #     print("UGG")
-
-        # if base_string == 'basedata':
-        #     print("Success")
-        # else:
-        #     del pagerange
-        #     return None
-        # try: 
-        #     current = CELL_SIZE_BYTES * (PAGE_RANGE_OFFSET + 1) + CELL_SIZE_BYTES * (PAGE_OFFSET*2) + PAGE_SIZE * pagerange.base_page_count
-        #     binary_file.seek(current)
-        #     tail_string = binary_file.read(CELL_SIZE_BYTES).decode('utf-8')
-        #     print(tail_string)
-        # except:
-        #     print("UGG")
-
-        # if tail_string == 'taildata':
-        #     print("TSuccess")
-        # else:
-        #     del pagerange
-        #     return None
 
