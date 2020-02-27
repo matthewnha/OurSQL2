@@ -56,18 +56,18 @@ class Table:
         self.prev_rid = 0
         self.prev_tid = 2**64 - 1
 
-        self.bp = BufferPool(self, disk)
+        self.bp = BufferPool(self, disk) # type: BufferPool
         self.key_index = {} # key -> base MetaRecord PID # Don't export
         self.index = Index(self) # Don't export
 
         pass
 
     def get_page(self, pid) -> Page: # type: Page
-        # cell_idx, page_idx, page_range_idx = pid
-        # page_range = self.page_ranges[page_range_idx] # type: PageRange
-        # page = page_range.get_page(page_idx) # type: Page
+        cell_idx, page_idx, page_range_idx = pid
+        page_range = self.page_ranges[page_range_idx] # type: PageRange
+        page = page_range.get_page(page_idx) # type: Page
 
-        page = self.bp.get_page(pid)
+        # page = self.bp.get_page(pid)
         return page
 
     def get_page_range(self,page_range_idx):
@@ -75,7 +75,8 @@ class Table:
 
     def read_pid(self, pid): # type: Page
         page = self.get_page(pid) # type: Page
-        read = page.read(pid[0])
+        # read = page.read(pid[0])
+        read = self.bp.handle(pid, page, page.read, pid[0])
         return read
 
     def get_open_base_page(self, col_idx):
@@ -162,26 +163,31 @@ class Table:
             self.prev_rid += 1
             rid = self.prev_rid
             rid_in_bytes = int_to_bytes(rid)
-            num_records_in_page = rid_page.write(rid_in_bytes)
+            # num_records_in_page = rid_page.write(rid_in_bytes)
+            self.bp.handle(rid_pid, rid_page, rid_page.write, rid_in_bytes)
 
             # Indirection
-            indirection_page.write(rid_in_bytes)
+            # indirection_page.write(rid_in_bytes)
+            self.bp.handle(indirection_pid, indirection_page, indirection_page.write, rid_in_bytes)
 
             # Timestamp
             millisec = int(round(time.time()*1000))
             bytes_to_write = int_to_bytes(millisec)
-            cell_dex = time_page.write(bytes_to_write)
+            # cell_dex = time_page.write(bytes_to_write)
+            cell_dex = self.bp.handle(time_pid, time_page, time_page.write, bytes_to_write)
 
             # Schema Encoding
             schema_encoding = 0
             bytes_to_write = int_to_bytes(schema_encoding)
-            schema_page.write(bytes_to_write)
+            # schema_page.write(bytes_to_write)
+            cell_dex = self.bp.handle(time_pid, schema_page, schema_page.write, bytes_to_write)
 
             # User Data
             for i, col_pid_and_page in enumerate(column_pids_and_pages):
                 col_pid, col_page = col_pid_and_page
                 bytes_to_write = int_to_bytes(columns_data[i])
-                col_page.write(bytes_to_write)
+                # col_page.write(bytes_to_write)
+                self.bp.handle(col_pid, col_page, col_page.write, bytes_to_write)
 
             sys_cols = [indirection_pid, rid_pid, time_pid, schema_pid]
             data_cols = [pid for pid, _ in column_pids_and_pages]
@@ -233,7 +239,8 @@ class Table:
             base_indir_page_pid = base_record.columns[INDIRECTION_COLUMN]
             base_indir_page = self.get_page(base_indir_page_pid) # type: Page
             base_indir_cell_idx,_,_ = base_indir_page_pid
-            prev_update_rid_bytes = base_indir_page.read(base_indir_cell_idx)
+            # prev_update_rid_bytes = base_indir_page.read(base_indir_cell_idx)
+            prev_update_rid_bytes = self.bp.handle(base_indir_page_pid, base_indir_page, base_indir_page.read, base_indir_cell_idx)
 
             # Base record encoding
             base_enc_page_pid = base_record.columns[SCHEMA_ENCODING_COLUMN]
@@ -249,7 +256,8 @@ class Table:
             indirection_pid = [None, ind_inner_idx, page_range_idx]
             
             # write indirection
-            num_records_in_page = indirection_page.write(prev_update_rid_bytes)
+            # num_records_in_page = indirection_page.write(prev_update_rid_bytes)
+            num_records_in_page = self.bp.handle(indirection_pid, indirection_page, indirection_page.write, prev_update_rid_bytes)
             ind_cell_idx = num_records_in_page - 1
             indirection_pid[0] = ind_cell_idx
 
@@ -262,7 +270,8 @@ class Table:
             self.prev_tid -= 1
             new_rid = self.prev_tid
             rid_in_bytes = int_to_bytes(new_rid)
-            num_records_in_page = rid_page.write(rid_in_bytes)
+            # num_records_in_page = rid_page.write(rid_in_bytes)
+            num_records_in_page = self.bp.handle(rid_pid, rid_page, rid_page.write, rid_in_bytes)
             rid_cell_idx = num_records_in_page - 1
             rid_pid[0] = rid_cell_idx
 
@@ -274,7 +283,8 @@ class Table:
             # write Timestamp todo: all timestamps
             millisec = int(round(time.time()*1000))
             bytes_to_write = int_to_bytes(millisec)
-            num_records_in_page = time_page.write(bytes_to_write)
+            # num_records_in_page = time_page.write(bytes_to_write)
+            num_records_in_page = self.bp.handle(time_pid, time_page, time_page.write, bytes_to_write)
             time_cell_idx = num_records_in_page - 1
             time_pid[0] = time_cell_idx
 
@@ -285,7 +295,8 @@ class Table:
 
             # write encoding
             bytes_to_write = int_to_bytes(tail_schema_encoding)
-            num_records_in_page = schema_page.write(bytes_to_write)
+            # num_records_in_page = schema_page.write(bytes_to_write)
+            num_records_in_page = self.bp.handle(schema_pid, schema_page, schema_page.write, bytes_to_write)
             schema_cell_idx = num_records_in_page - 1
             schema_pid[0] = schema_cell_idx
 
@@ -305,24 +316,27 @@ class Table:
 
                 # Get/make open tail page from the respective og page range
                 inner_page_idx, tail_page = page_range.get_open_tail_page()
+                pid = [None, inner_page_idx, page_range_idx]
                 bytes_to_write = int_to_bytes(update_data[i])
-                num_records = tail_page.write(bytes_to_write)
+                # num_records = tail_page.write(bytes_to_write)
+                num_records = self.bp.handle(pid, tail_page, tail_page.write, bytes_to_write)
                 cell_idx = num_records - 1
 
-                pid = [cell_idx, inner_page_idx, page_range_idx]  
+                pid[0] = cell_idx
                 data_columns.append(pid)
 
             tail_record = MetaRecord(new_rid, key, meta_columns + data_columns)
             self.page_directory[new_rid] = tail_record
             # Update base record indirection and schema
             new_rid_bytes = int_to_bytes(new_rid)
-            base_indir_page.write_to_cell(new_rid_bytes, base_indir_cell_idx)
+            self.bp.handle(base_indir_page_pid, base_indir_page, base_indir_page.write_to_cell, new_rid_bytes, base_indir_cell_idx)
 
-            base_schema_enc_bytes = base_enc_page.read(base_enc_cell_idx)
+            # base_schema_enc_bytes = base_enc_page.read(base_enc_cell_idx)
+            base_schema_enc_bytes = self.bp.handle(base_enc_page_pid, base_enc_page, base_enc_page.read, base_enc_cell_idx)
             base_schema_enc_int = int_from_bytes(base_schema_enc_bytes)
             new_base_enc = base_schema_enc_int | tail_schema_encoding
             bytes_to_write = int_to_bytes(new_base_enc)
-            base_enc_page.write_to_cell(bytes_to_write, base_enc_cell_idx)
+            self.bp.handle(base_enc_page_pid, base_enc_page, base_enc_page.write_to_cell, bytes_to_write, base_enc_cell_idx)
             
             # Release locks and return
             release_all(locks)
@@ -375,7 +389,8 @@ class Table:
                     continue
 
                 col_pid = base_record.columns[START_USER_DATA_COLUMN + data_col_idx]
-                tps = self.get_page(col_pid).read_tps()
+                col_page = self.get_page(col_pid)
+                tps = self.bp.handle(col_pid, col_page, col_page.read_tps)
                 tps_all[data_col_idx] = tps
 
                 data = self.read_pid(col_pid)
@@ -450,10 +465,11 @@ class Table:
             # Acquired lock ===========
 
             base_record = self.page_directory[base_rid]  # type: MetaRecord
-            base_rid_page = self.get_page(base_record.columns[RID_COLUMN])
+            base_rid_pid = base_record.columns[RID_COLUMN]
+            base_rid_page = self.get_page(base_rid_pid)
             base_rid_cell_inx,_,_ = base_record.columns[RID_COLUMN]
 
-            base_rid_page.write_to_cell(int_to_bytes(0),base_rid_cell_inx)
+            self.bp.handle(base_rid_pid, base_rid_page, base_rid_page.write_to_cell, itb(0),base_rid_cell_inx))
             self.key_index[key] = 0
             if 0 in self.page_directory:
                 self.page_directory[0].append(base_record)
@@ -467,10 +483,11 @@ class Table:
 
             while True:            
                 new_tail_record = self.page_directory[new_tail_rid]
-                new_tail_rid_page = self.get_page(new_tail_record.columns[RID_COLUMN]) # type: Page
-                new_tail_rid_cell_inx,_,_ = new_tail_record.columns[RID_COLUMN]
+                new_tail_rid_pid = new_tail_record.columns[RID_COLUMN]
+                new_tail_rid_page = self.get_page(new_tail_rid_pid) # type: Page
+                new_tail_rid_cell_inx,_,_ = new_tail_rid_pid
 
-                new_tail_rid_page.write_to_cell(int_to_bytes(0),new_tail_rid_cell_inx)
+                self.bp.handle(new_tail_rid_pid, new_tail_rid_page, new_tail_rid_page.write_to_cell, int_to_bytes(0),new_tail_rid_cell_inx)
                 del self.page_directory[new_tail_rid]
                 self.page_directory[0].append(new_tail_record)
                 if(base_rid == new_tail_rid):

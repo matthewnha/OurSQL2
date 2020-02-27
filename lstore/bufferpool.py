@@ -73,11 +73,11 @@ class BufferPool:
         if not success:
             raise Exception("Page didn't exist on disk")
 
-        self.pages.add_page(page)
+        self.add_page(pid, page)
 
         return page
 
-    def handle(self, page, pid, page_func, *args):
+    def handle(self, pid, page, page_func, *args):
         if not page.is_loaded:
             self.load_from_disk(pid, page)
 

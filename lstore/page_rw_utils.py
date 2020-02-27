@@ -96,25 +96,12 @@ def decode_pagerange(BYTES_pr) -> PageRange:
 
     return pr
 
-def decode_page(BYTES_page) -> Page:
-    page = Page(True)
+def decode_page(BYTES_page, load_data = True) -> Page:
+    page = Page(is_importing = not load_data)
     page.num_records = int_from_bytes(BYTES_page[0:8])
-    page.data = bytearray(BYTES_page[8:])
+    if load_data:
+        page.data = bytearray(BYTES_page[8:])
     return page
-
-def fetch_pr_bytes(pr_idx):
-    pass
-
-def extract_page_data_from_pr(pr_bytes, inner_idx):
-
-    max_base_pages = 16
-    offset_start_bp = 16
-    bytes_page_size = 8 + PAGE_SIZE
-    
-    if inner_idx < 16: # Getting base page
-        pass
-    else:
-        pass
 
 def compare_pages(a, b):
     results = []
