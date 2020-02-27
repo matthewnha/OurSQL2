@@ -37,7 +37,7 @@ class Table:
     :param num_columns: int     #Number of Columns: all columns are integer
     :param key: int             #Index of table key in columns
     """
-    def __init__(self, name, num_columns, key_col):
+    def __init__(self, name, num_columns, key_col, disk):
         
         self.name = name
         self.key_col = key_col
@@ -47,7 +47,6 @@ class Table:
         self.num_rows = 0
 
         self.page_ranges = []
-
         self.page_directory = {}
         self.rw_locks = {} # only base records for now # Don't export
         self.del_locks = {} # Don't export
@@ -57,27 +56,26 @@ class Table:
         self.prev_rid = 0
         self.prev_tid = 2**64 - 1
 
+        self.bp = BufferPool(self, disk)
         self.key_index = {} # key -> base MetaRecord PID # Don't export
         self.index = Index(self) # Don't export
 
         pass
 
     def get_page(self, pid) -> Page: # type: Page
-        cell_idx, page_idx, page_range_idx = pid
-        page_range = self.page_ranges[page_range_idx] # type: PageRange
-        page = page_range.get_page(page_idx) # type: Page
+        # cell_idx, page_idx, page_range_idx = pid
+        # page_range = self.page_ranges[page_range_idx] # type: PageRange
+        # page = page_range.get_page(page_idx) # type: Page
 
+        page = self.bp.get_page(pid)
         return page
 
     def get_page_range(self,page_range_idx):
         return self.page_ranges[page_range_idx]
 
     def read_pid(self, pid): # type: Page
-        cell_idx, page_idx, page_range_idx = pid
-        page_range = self.page_ranges[page_range_idx] # type: PageRange
-        page = page_range.get_page(page_idx) # type: Page
-        read = page.read(cell_idx)
-
+        page = self.get_page(pid) # type: Page
+        read = page.read(pid[0])
         return read
 
     def get_open_base_page(self, col_idx):
@@ -97,6 +95,7 @@ class Table:
         mod = self.num_rows % CELLS_PER_PAGE
         max_cell_index = CELLS_PER_PAGE - 1
         prev_cell_idx = max_cell_index if (0 == mod) else (mod - 1)
+        base_page_is_new = False
 
         if max_cell_index == prev_cell_idx: # last page was full
             # Go to next col page
@@ -123,6 +122,8 @@ class Table:
                 raise Exception('Created inner page index is not the same as the expected inner page index',
                     page.get_num_records(),
                     created_inner_page_idx, cell_idx, inner_page_idx, page_range_idx, outer_page_idx)
+            
+            base_page_is_new = True
 
         else: # there's space in the last used page
             outer_page_idx = prev_outer_page_idx
@@ -137,6 +138,9 @@ class Table:
                 raise Exception('No page returned', cell_idx, inner_page_idx, page_range_idx, outer_page_idx, self.num_rows, col_idx)
             
         pid = [cell_idx, inner_page_idx, page_range_idx]
+
+        if base_page_is_new:
+            self.bp.add_page(pid,page)
 
         return (pid, page)
 

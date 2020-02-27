@@ -10,20 +10,20 @@ class Page:
             self.data = None
             self.is_loaded = False
         else:
-            self.data = bytearray(4096)
+            self.data = bytearray(PAGE_SIZE)
             self.is_loaded = True
             self.write_tps(RESERVED_TID)
 
         self.is_dirty = False
         
 
-    def load(self, data):
+    def load(self, data, num_records):
         if self.data == None:
             self.data = data
+            self.num_records = num_records
+        self.is_loaded = True
 
-    def load(self, data):
-        if self.data == None:
-            self.data = data
+        return self
     
     def has_capacity(self):
         return self.num_records < (CELLS_PER_PAGE)
@@ -39,6 +39,7 @@ class Page:
         '''
         if not self.has_capacity():
             raise Exception('page is full')
+
 
         start = (self.num_records + 1) * CELL_SIZE_BYTES
         end = start + CELL_SIZE_BYTES
