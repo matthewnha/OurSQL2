@@ -107,6 +107,7 @@ def test1():
 
 def test2():
     db = Database()
+    db.open('~/ECS165')
 
     grades_table = db.create_table('Grades', 5, 0)
     query = Query(grades_table)
@@ -118,7 +119,7 @@ def test2():
     print('START FIRST SELECT')
 
     insert_time_0 = process_time()
-    for i in range(0, 5000):
+    for i in range(0, 10000):
         data = [i, i*10, i*20, i*30, i*40]
         query.insert(*data)
 
@@ -126,7 +127,7 @@ def test2():
         expected[i] = data
     insert_time_1 = process_time()
 
-    for i in range(100):
+    for i in range(1000):
 
         # update
         col = randint(0, 4)
@@ -134,15 +135,56 @@ def test2():
 
         data = [None, None, None, None, None]
         data[col] = val
+        key = choice(keys)
 
-        query.update(9399395, *data)
-        expected[col] = val
+        query.update(key, *data)
+        expected[key][col] = val
         print('{0:>20} : {1:<10}'.format('EXPECTED', str(expected)))
 
-        time.sleep(0.1)
+        actual = query.select(key, [1,1,1,1,1])[0].columns
+        print('{0:>20} : {1:<10}'.format('SEL MERGE', str(actual)))
+        if expected[key] != actual:
+            raise Exception('shit')
 
-    stop = True
-    print('END FIRST SELECT')
+    db.close()
+
+    db = Database()
+    db.open('~/ECS165')
+
+    grades_table = db.tables["Grades"]
+    query = Query(grades_table)
+
+    print('START FIRST SELECT')
+
+    insert_time_0 = process_time()
+    for i in range(10000, 20000):
+        data = [i, i*10, i*20, i*30, i*40]
+        query.insert(*data)
+
+        keys.append(i)
+        expected[i] = data
+    insert_time_1 = process_time()
+
+    for i in range(1000):
+
+        # update
+        col = randint(0, 4)
+        val = randint(0, 100)
+
+        data = [None, None, None, None, None]
+        data[col] = val
+        key = choice(keys)
+
+        query.update(key, *data)
+        expected[key][col] = val
+        print('{0:>20} : {1:<10}'.format('EXPECTED', str(expected)))
+
+        actual = query.select(key, [1,1,1,1,1])[0].columns
+        print('{0:>20} : {1:<10}'.format('SEL MERGE', str(actual)))
+        if expected[key] != actual:
+            raise Exception('shit')
+
+    db.close()
 
     # [1, 100, 88, 7, 200]
 

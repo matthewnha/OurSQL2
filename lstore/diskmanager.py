@@ -109,7 +109,7 @@ class DiskManager:
 
 
     def write_db_directory(self):
-        binary_file = open(self.database_folder + "Database_Directory", 'wb+')
+        binary_file = open(self.database_folder + "Database_Directory", 'w+b')
 
         data = bytearray()
 
@@ -240,10 +240,10 @@ class DiskManager:
             return False
 
         try:
-            binary_file = open(self.get_tablemeta_filepath(table_name), 'wb+')
+            binary_file = open(self.get_tablemeta_filepath(table_name), 'w+b')
         except FileNotFoundError:
             self.make_table_folder(table_name)
-            binary_file = open(self.get_tablemeta_filepath(table_name), 'wb+')
+            binary_file = open(self.get_tablemeta_filepath(table_name), 'w+b')
 
         data = bytearray()
 
@@ -320,7 +320,7 @@ class DiskManager:
     def write_page_range(self, pr, pagerange_num, table_name):
         # print("Here")
         try:
-            binary_file = open(self.get_pr_filepath(table_name, pagerange_num), "wb+")
+            binary_file = open(self.get_pr_filepath(table_name, pagerange_num), "w+b")
         except FileNotFoundError:
             return False
 
@@ -388,7 +388,7 @@ class DiskManager:
             raise Exception("Page not loaded")
         
         _, inner_idx, pr_idx = pid
-        binary_file = open(self.get_pr_filepath(table_name, pr_idx), "wb+")
+        binary_file = open(self.get_pr_filepath(table_name, pr_idx), "w+b")
 
         if num_base_pages == None:
             num_base_pages = table.page_ranges[pr_idx].base_page_count
