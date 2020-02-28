@@ -48,6 +48,7 @@ class BufferPool:
         page_to_pop.is_loaded = False
         self.pins[encode_pid(pid)] = 0
         self.num_pool_pages -= 1
+        self.pages.pop(i)
     
     def write_to_disk(self, pid, page):
         success = self.disk.write_page(pid, page, self.table, self.table.name)
@@ -60,7 +61,7 @@ class BufferPool:
         page_range = self.table.page_ranges[page_range_idx] # type: PageRange
         page = self.table.page_range.get_page(page_idx) # type: Page
 
-        if page.is_loaded:
+        if not page.is_loaded:
             self.load_from_disk(pid,page)
         
         return page

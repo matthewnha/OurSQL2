@@ -440,8 +440,6 @@ class Table:
                         need[data_col_idx] = 0
                         continue
 
-                    # print('LOOKED AT TAIL')
-
                     col_pid = curr_record.columns[START_USER_DATA_COLUMN + data_col_idx]
                     data = self.read_pid(col_pid)
                     data = int_from_bytes(data)

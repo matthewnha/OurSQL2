@@ -139,7 +139,7 @@ def test2():
 
         query.update(key, *data)
         expected[key][col] = val
-        print('{0:>20} : {1:<10}'.format('EXPECTED', str(expected)))
+        print('{0:>20} : {1:<10}'.format('EXPECTED', str(expected[key])))
 
         actual = query.select(key, [1,1,1,1,1])[0].columns
         print('{0:>20} : {1:<10}'.format('SEL MERGE', str(actual)))
@@ -148,13 +148,15 @@ def test2():
 
     db.close()
 
+    print('Closed first time, opening')
+
     db = Database()
     db.open('~/ECS165')
 
     grades_table = db.tables["Grades"]
     query = Query(grades_table)
 
-    print('START FIRST SELECT')
+    print('START SECOND SELECT')
 
     insert_time_0 = process_time()
     for i in range(10000, 20000):
@@ -177,7 +179,7 @@ def test2():
 
         query.update(key, *data)
         expected[key][col] = val
-        print('{0:>20} : {1:<10}'.format('EXPECTED', str(expected)))
+        print('{0:>20} : {1:<10}'.format('EXPECTED', str(expected[key])))
 
         actual = query.select(key, [1,1,1,1,1])[0].columns
         print('{0:>20} : {1:<10}'.format('SEL MERGE', str(actual)))

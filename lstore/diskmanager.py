@@ -240,10 +240,10 @@ class DiskManager:
             return False
 
         try:
-            binary_file = open(self.get_tablemeta_filepath(table_name), 'w+b')
+            binary_file = open(self.get_tablemeta_filepath(table_name), 'r+b')
         except FileNotFoundError:
             self.make_table_folder(table_name)
-            binary_file = open(self.get_tablemeta_filepath(table_name), 'w+b')
+            binary_file = open(self.get_tablemeta_filepath(table_name), 'r+b')
 
         data = bytearray()
 
@@ -317,10 +317,10 @@ class DiskManager:
         return True
 
     # Todo
-    def write_page_range(self, pr, pagerange_num, table_name):
+    def write_page_range(self, pr, pagerange_num, table_name, write_pages = True):
         # print("Here")
         try:
-            binary_file = open(self.get_pr_filepath(table_name, pagerange_num), "w+b")
+            binary_file = open(self.get_pr_filepath(table_name, pagerange_num), "r+b")
         except FileNotFoundError:
             return False
 
@@ -336,30 +336,31 @@ class DiskManager:
         BYTES_tail_page_count = int_to_bytes(pr.tail_page_count)
         binary_file.write(BYTES_tail_page_count)
 
-        #
-        # Write Base Pages
-        #
+        if write_pages:
+            #
+            # Write Base Pages
+            #
 
-        BYTES_base_pages = b''
-        for i in range(pr.base_page_count):
-            page = pr.base_pages[i]
-            if page.is_dirty:
-                # BYTES_base_pages += encode_page(page)  # 8 + PAGE_SIZE
-                binary_file.write(encode_page(page))
-            else:
-                binary_file.seek(SIZE_ENCODED_PAGE, 1)
+            BYTES_base_pages = b''
+            for i in range(pr.base_page_count):
+                page = pr.base_pages[i]
+                if page.is_dirty:
+                    # BYTES_base_pages += encode_page(page)  # 8 + PAGE_SIZE
+                    binary_file.write(encode_page(page))
+                else:
+                    binary_file.seek(SIZE_ENCODED_PAGE, 1)
 
-        #
-        # Write Tail Pages
-        #
+            #
+            # Write Tail Pages
+            #
 
-        for i in range(pr.tail_page_count):
-            page = pr.tail_pages[i]
-            if page.is_dirty:
-                # BYTES_base_pages += encode_page(page)  # 8 + PAGE_SIZE
-                binary_file.write(encode_page(page))
-            else:
-                binary_file.seek(SIZE_ENCODED_PAGE, 1)
+            for i in range(pr.tail_page_count):
+                page = pr.tail_pages[i]
+                if page.is_dirty:
+                    # BYTES_base_pages += encode_page(page)  # 8 + PAGE_SIZE
+                    binary_file.write(encode_page(page))
+                else:
+                    binary_file.seek(SIZE_ENCODED_PAGE, 1)
         
         binary_file.close()
 
@@ -368,9 +369,9 @@ class DiskManager:
     def get_page_offset_in_pr(self, pid, num_base_pages):
         _, inner_idx, pr_idx = pid
         
-        idx = 0
+        idx = inner_idx
         if inner_idx >= PAGE_RANGE_MAX_BASE_PAGES:
-            idx = num_base_pages - 1
+            idx = num_base_pages
             idx += inner_idx - PAGE_RANGE_MAX_BASE_PAGES
 
         # Skip meta
@@ -388,8 +389,14 @@ class DiskManager:
             raise Exception("Page not loaded")
         
         _, inner_idx, pr_idx = pid
-        binary_file = open(self.get_pr_filepath(table_name, pr_idx), "w+b")
+        created_pagerange_file = False
 
+        filepath = self.get_pr_filepath(table_name, pr_idx)
+        try:
+            binary_file = open(filepath, "r+b")
+        except:
+            binary_file = open(filepath, "w+b")
+            
         if num_base_pages == None:
             num_base_pages = table.page_ranges[pr_idx].base_page_count
 
