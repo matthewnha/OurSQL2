@@ -264,7 +264,7 @@ class Table:
             ind_inner_idx, indirection_page = page_range.get_open_tail_page()
             indirection_pid = [None, ind_inner_idx, page_range_idx]
             self.bp.add_page(indirection_pid,indirection_page)
-            
+
             # write indirection
             num_records_in_page = indirection_page.write(prev_update_rid_bytes)
             ind_cell_idx = num_records_in_page - 1
@@ -489,8 +489,9 @@ class Table:
             base_rid_cell_inx,_,_ = base_record.columns[RID_COLUMN]
 
             base_rid_page.write_to_cell(int_to_bytes(0),base_rid_cell_inx)
-            self.key_index[key] = 0
+            del self.key_index[key]
             if 0 in self.page_directory:
+                base_record.rid = 0
                 self.page_directory[0].append(base_record)
             else:
                 self.page_directory[0] = [base_record]

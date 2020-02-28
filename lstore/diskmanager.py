@@ -227,7 +227,13 @@ class DiskManager:
             if(not tail_flag):
                 table.key_index[key] = rid
             
-            table.page_directory[rid] = metarecord
+            if rid == 0: # Was deleted
+                if 0 in table.page_directory:
+                    table.page_directory[rid].append(metarecord)
+                else:
+                    table.page_directory[rid] = [metarecord]
+            else:
+                table.page_directory[rid] = metarecord
 
         meta_file.close()
         return table
@@ -401,7 +407,7 @@ class DiskManager:
 
         binary_file.close()
 
-        print('pause')
+        # print('pause')
 
     # Todo
     def import_page(self, page, page_key, table, table_folder, num_base_pages = None):
@@ -430,7 +436,7 @@ class DiskManager:
 
         binary_file.close()
 
-        print('pause')
+        # print('pause')
 
     def rw_test(self):
         og_page = Page()
