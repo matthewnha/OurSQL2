@@ -69,14 +69,21 @@ class BufferPool:
 
         # todo: choose a page to pop. pops oldest page for now, get page pid
         i = 0
-        page_key, page_to_pop = self.pages[i]
 
+        page_key, page_to_pop = self.pages[i]
+        pages_to_remove = []
         # print(self.num_pool_pages, "num of pages")
         # print("Least used page pid is", tuple(page_key))
-        while self.pins[page_key] > 0 and i < self.num_pool_pages:
+        num_pages_to_remove = self.num_pool_pages//4
+        while i < self.num_pool_pages and len(pages_to_remove) < num_pages_to_remove:
 
             page_key, page_to_pop = self.pages[i]
             i += 1
+
+            if self.pins[page_key] == 0:
+                pages_to_remove.append(self.pages.pop(i))
+                self.num_pool_pages -= 1
+                # print("Popping",page_key,i)
 
             if i >= self.num_pool_pages:
                 i = 0
@@ -84,20 +91,21 @@ class BufferPool:
         # if i != self.num_pool_pages - 1:
         #     page_key, page_to_pop = self.move_to_back_and_pop(i)
         # else:
-        page_key, page_to_pop = self.pages.pop(i)
-        self.num_pool_pages += -1
 
-        if page_to_pop.is_dirty:
-            self.write_to_disk(page_key, page_to_pop)
+        for page in pages_to_remove:
 
-        page_to_pop.data = None
-        page_to_pop.is_loaded = False
+            page_key, page_to_pop = page
+            if page_to_pop.is_dirty:
+                self.write_to_disk(page_key, page_to_pop)
 
-        del self.pins[page_key]
+            page_to_pop.data = None
+            page_to_pop.is_loaded = False
+
+            del self.pins[page_key]
         # del self.page_index[page_key]
 
 
-        print("Bufferpool was full, page removed", page_key, "at" , i)
+        print("Done popping. Popped", num_pages_to_remove, "pages")
     
     def write_new_page_range(self, page_range, num):
         # print("Writing new pagerange file, pagerange:", num, " in table",self.table.name)

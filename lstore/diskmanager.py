@@ -179,7 +179,10 @@ class DiskManager:
         page_directory_size = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
         table.num_rows = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
 
-        if meta_file.read(CELL_SIZE_BYTES).decode('utf-8') == 'bdeleted':
+        d = meta_file.read(CELL_SIZE_BYTES).decode('utf-8') == 'bdeleted'
+        print(d)
+
+        if d == 'bdeleted':
             print("Getting deleted records")
             
             num_deleted_records = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
@@ -212,10 +215,12 @@ class DiskManager:
                 deleted_records.append(metarecord)
                 
             if  meta_file.read(CELL_SIZE_BYTES).decode('utf-8') == 'edeleted':
-                self.table.page_directory[0] = deleted_records
+                table.page_directory[0] = deleted_records
                 print("End deleting records")
             else:
                 print("Oops")
+        
+        tail_flag = False
 
         for i in range(page_directory_size):
 
@@ -300,39 +305,40 @@ class DiskManager:
 
 
         # Writing deleted records with special key d0000000
-        if 0 in self.table.page_directory:
-                print("Writing deleted records")
+        if 0 in table.page_directory:
+            print("Writing deleted records")
 
-                data += 'bdeleted'.encode('utf-8')
-                
-                deleted_records = table.page_directory.pop(0)
+            data += 'bdeleted'.encode('utf-8')
+            
+            deleted_records = table.page_directory.pop(0)
 
-                data += len(deleted_records) # num deleted records
-                key = 'd0000000'.encode('utf-8')
+            data += int_to_bytes(len(deleted_records)) # num deleted records
+            key = 'd0000000'.encode('utf-8')
 
-                for d_record in deleted_records:
+            for d_record in deleted_records:
 
-                    data += key
-                    the_columns = bytearray()
-                    schema = 0
+                data += key
+                the_columns = bytearray()
+                schema = 0
 
-                    for i, column in enumerate(d_record):
+                for i, column in enumerate(d_record.columns):
 
-                        if column == None:
-                                continue
-                        else:
+                    if column == None:
+                            continue
+                    else:
 
-                            if i >= START_USER_DATA_COLUMN:
-                                schema += 2**(i - START_USER_DATA_COLUMN)
+                        if i >= START_USER_DATA_COLUMN:
+                            schema += 2**(i - START_USER_DATA_COLUMN)
 
-                            for dex in column:
-                                the_columns += int_to_bytes(dex)
+                        for dex in column:
+                            the_columns += int_to_bytes(dex)
 
-                        # Tells import_table which columns to ignore
-                        schema = int_to_bytes(schema)
-                        data += schema + the_columns
+                    # Tells import_table which columns to ignore
+                schema = int_to_bytes(schema)
+                data += schema + the_columns
 
-                data += 'edeleted'.encode('utf-8')
+            data += 'edeleted'.encode('utf-8')
+
         else:
             data += 'nodelete'.encode('utf-8')
 
