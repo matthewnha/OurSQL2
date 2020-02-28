@@ -190,7 +190,7 @@ def test2():
 
     # [1, 100, 88, 7, 200]
 
-test2()
+test1()
 
 # select_times_before = []
 # agg_times_before = []

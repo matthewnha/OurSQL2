@@ -181,7 +181,7 @@ class DiskManager:
 
         tail_flag = False
 
-        for i in range(page_directory_size):
+        for _i in range(page_directory_size):
 
             # Read rid and key
             rid = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
@@ -240,10 +240,10 @@ class DiskManager:
             return False
 
         try:
-            binary_file = open(self.get_tablemeta_filepath(table_name), 'r+b')
+            binary_file = open(self.get_tablemeta_filepath(table_name), 'w+b')
         except FileNotFoundError:
             self.make_table_folder(table_name)
-            binary_file = open(self.get_tablemeta_filepath(table_name), 'r+b')
+            binary_file = open(self.get_tablemeta_filepath(table_name), 'w+b')
 
         data = bytearray()
 
@@ -277,8 +277,10 @@ class DiskManager:
                 tail_flag = True
 
             # Write rid and key
-            data += int_to_bytes(current_rid)
-            data += int_to_bytes(current_record.key)
+            rid = current_rid
+            key = current_record.key
+            data += int_to_bytes(rid)
+            data += int_to_bytes(key)
 
             # Write columns of base record
             if not tail_flag:
@@ -322,7 +324,7 @@ class DiskManager:
         try:
             binary_file = open(self.get_pr_filepath(table_name, pagerange_num), "r+b")
         except FileNotFoundError:
-            return False
+            binary_file = open(self.get_pr_filepath(table_name, pagerange_num), "w+b")
 
         # data = encode_pagerange(pagerange)
 
@@ -367,7 +369,9 @@ class DiskManager:
         return True
 
     def get_page_offset_in_pr(self, pid, num_base_pages):
-        _, inner_idx, pr_idx = pid
+        if len(pid) > 2:
+            raise Exception('Only pass elements 1 and 2 of pid')
+        inner_idx, pr_idx = pid
         
         idx = inner_idx
         if inner_idx >= PAGE_RANGE_MAX_BASE_PAGES:
@@ -385,10 +389,13 @@ class DiskManager:
 
     # Todo
     def write_page(self, pid, page, table, table_name, num_base_pages = None):
+        if len(pid) > 2:
+            raise Exception('Only pass elements 1 and 2 of pid')
+        
         if page.data == None:
             raise Exception("Page not loaded")
         
-        _, inner_idx, pr_idx = pid
+        inner_idx, pr_idx = pid
         created_pagerange_file = False
 
         filepath = self.get_pr_filepath(table_name, pr_idx)
@@ -412,7 +419,9 @@ class DiskManager:
 
     # Todo
     def import_page(self, pid, page, table, table_name, num_base_pages = None):
-        _, inner_idx, pr_idx = pid
+        if len(pid) > 2:
+            raise Exception('Only pass elements 1 and 2 of pid')
+        inner_idx, pr_idx = pid
 
         try:
             binary_file = open(self.get_pr_filepath(table_name, pr_idx), 'rb')

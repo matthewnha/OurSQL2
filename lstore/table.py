@@ -63,7 +63,10 @@ class Table:
         pass
 
     def get_page(self, pid) -> Page: # type: Page
-        cell_idx, page_idx, page_range_idx = pid
+        if len(pid) > 2:
+            _, page_idx, page_range_idx = pid
+        else:
+            page_idx, page_range_idx = pid
         page_range = self.page_ranges[page_range_idx] # type: PageRange
         page = page_range.get_page(page_idx) # type: Page
 
@@ -148,13 +151,13 @@ class Table:
         pid = [cell_idx, inner_page_idx, page_range_idx]
 
         if base_page_is_new:
-            self.bp.add_page(pid,page)
+            self.bp.add_page(pid[1:], page)
 
         return (pid, page)
 
     def get_open_tail_page(self, pr, pr_idx):
         ind_inner_idx, page = pr.get_open_tail_page()
-        pid = [None, ind_inner_idx, pr_idx]
+        pid = (ind_inner_idx, pr_idx)
         self.bp.add_page(pid, page)
         return ind_inner_idx, page
 
@@ -308,7 +311,7 @@ class Table:
             _,_,page_range_idx = base_record.columns[SCHEMA_ENCODING_COLUMN]
             page_range = self.page_ranges[page_range_idx] # type: PageRange
             # schema_inner_idx, schema_page = page_range.get_open_tail_page()
-            schema_inner_idx, schema_page = self.get_open_tail_page(page_range, page_range_idx)
+            schema_inner_idx, schema_page = self.get_open_tail_page(page_range, page_range_idx) # wtf
             schema_pid = [None, schema_inner_idx, page_range_idx]
 
             # write encoding

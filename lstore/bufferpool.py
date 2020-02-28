@@ -15,6 +15,9 @@ class BufferPool:
         self.table = table # type: Table
 
     def add_page(self, pid, page):
+        if len(pid) > 2:
+            raise Exception('Only pass elements 1 and 2 of pid')
+
         if self.num_pool_pages >= MAX_POOL_PAGES:
             self.pop_page() # Choose page to remove from pool
 
@@ -32,12 +35,10 @@ class BufferPool:
         # todo: choose a page to pop. pops oldest page for now, get page pid
         i = 0
         pid = self.pages[i]
-        pid[0] = 0
         page_to_pop = self.table.get_page(pid)
 
         while(encode_pid(pid) in self.pins and self.pins[encode_pid(pid)] > 0):
             pid = self.pages[i]
-            pid[0] = 0
             page_to_pop = self.table.get_page(pid)
             i += 1
 
@@ -57,7 +58,10 @@ class BufferPool:
         return success
 
     def get_page(self, pid):
-        cell_idx, page_idx, page_range_idx = pid
+        if len(pid) != 2:
+            raise Exception('Get page only accepts pids with inner idx and range idx')
+
+        page_idx, page_range_idx = pid
         page_range = self.table.page_ranges[page_range_idx] # type: PageRange
         page = self.table.page_range.get_page(page_idx) # type: Page
 
@@ -68,6 +72,9 @@ class BufferPool:
 
 
     def load_from_disk(self, pid, page):
+        if len(pid) != 2:
+            raise Exception('Get page only accepts pids with inner idx and range idx')
+
         if self.num_pool_pages >= MAX_POOL_PAGES:
             # print('Buffer full, must pop a page')
             self.pop_page() # Choose page to remove from pool
@@ -83,6 +90,9 @@ class BufferPool:
 
     def handle(self, pid, page, page_func, *args):
         if not page.is_loaded:
+            if len(pid) > 2:
+                pid = pid[1:]
+
             self.load_from_disk(pid, page)
 
         return page_func(*args)
