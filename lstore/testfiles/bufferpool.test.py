@@ -60,8 +60,8 @@ def test1():
 
     imported_db = Database()
     imported_db.open('~/BP_test')
-    grades_table = imported_db.get_table('Grades')
-    query = Query(grades_table)
+    imported_grades_table = imported_db.get_table('Grades')
+    query = Query(imported_grades_table)
 
 
     # Measuring Insert Performance
@@ -95,11 +95,11 @@ def test1():
     imported_db.close()
     del imported_db
     del imported_grades_table
-    del imported_query
+    del query
 
     db = Database()
     db.open('~/BP_test')
-    grades_table = db.get_tables("Grades")
+    grades_table = db.get_table("Grades")
     query = Query(grades_table)
 
     success = 0
@@ -113,6 +113,9 @@ def test1():
     print(success,'/',len(keys),' were read successfully :)')
 
 def test2():
+    success = 0
+    count = 0
+
     db = Database()
     db.open('~/BP_test')
 
@@ -150,8 +153,12 @@ def test2():
 
         actual = query.select(key, [1,1,1,1,1])[0].columns
         # print('{0:>20} : {1:<10}'.format('SEL MERGE', str(actual)))
+
+        count += 1
         if expected[key] != actual:
             raise Exception('shit')
+        else:
+            success += 1
 
     db.close()
 
@@ -191,11 +198,19 @@ def test2():
 
         actual = imported_query.select(key, [1,1,1,1,1])[0].columns
         # print('{0:>20} : {1:<10}'.format('SEL MERGE', str(actual)))
+
+        count += 1
         if expected[key] != actual:
             raise Exception('shit')
+        else:
+            success += 1
 
     imported_db.close()
-
+    print('{0:}/{1:} Successes'.format(success, count))
     # [1, 100, 88, 7, 200]
 
+print('Test 1')
+test1()
+print('Test 2')
 test2()
+# print('Done tests')
