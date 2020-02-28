@@ -163,9 +163,9 @@ class MergeJob:
                 continue
 
             # Lock record from deletion
-            self.table.del_locks[rid].acquire()
+            self.table._del_locks[rid].acquire()
             if rid not in self.table.page_directory: # If we just acquired the del lock, we might've acquired it after a delete
-                self.table.del_locks[rid].release()
+                self.table._del_locks[rid].release()
                 # print('Got lock but the base record was deleted')
                 continue
 
@@ -174,7 +174,7 @@ class MergeJob:
             self.write_collapsed_pages(base_record, data_cols)
 
             # Release lock
-            self.table.del_locks[rid].release()
+            self.table._del_locks[rid].release()
 
         self.write_tps_to_all()
 
@@ -185,7 +185,7 @@ class MergeJob:
 
             # Lock record from rw/deletion
             while(1):
-                acquire_resp = acquire_all([self.table.rw_locks[rid], self.table.del_locks[rid]])
+                acquire_resp = acquire_all([self.table.rw_locks[rid], self.table._del_locks[rid]])
                 if acquire_resp is False:
                     continue
                 locks = acquire_resp

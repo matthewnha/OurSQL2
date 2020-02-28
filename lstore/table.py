@@ -49,7 +49,7 @@ class Table:
         self.page_ranges = []
         self.page_directory = {}
         self._rw_locks = {} # only base records for now # Don't export
-        self.del_locks = {} # Don't export
+        self._del_locks = {} # Don't export
 
         self.merge_lock = threading.Lock() # Don't export
 
@@ -68,7 +68,13 @@ class Table:
 
         return self._rw_locks[rid]
 
-    def get_page(self, pid) -> Page: # type: Page
+    def del_locks(self, rid):
+        if rid not in self._del_locks:
+            self._del_locks[rid] = threading.Lock()
+
+        return self._del_locks[rid]
+
+    def get_page(self, pid): # type: Page
         # cell_idx, page_idx, page_range_idx = pid
         # page_range = self.page_ranges[page_range_idx] # type: PageRange
         # page = page_range.get_page(page_idx) # type: Page
@@ -198,7 +204,7 @@ class Table:
             record = MetaRecord(rid, key, sys_cols + data_cols)
             self.page_directory[rid] = record
             self._rw_locks[rid] = threading.Lock()
-            self.del_locks[rid] = threading.Lock()
+            self._del_locks[rid] = threading.Lock()
             self.key_index[key] = rid
             self.num_rows += 1
 
@@ -257,18 +263,19 @@ class Table:
             page_range = self.page_ranges[page_range_idx] # type: PageRange
             ind_inner_idx, indirection_page = page_range.get_open_tail_page()
             indirection_pid = [None, ind_inner_idx, page_range_idx]
+            self.bp.add_page(indirection_pid,indirection_page)
             
             # write indirection
             num_records_in_page = indirection_page.write(prev_update_rid_bytes)
             ind_cell_idx = num_records_in_page - 1
             indirection_pid[0] = ind_cell_idx
-            self.bp.add_page(indirection_pid,indirection_page)
+            
 
             _,_,page_range_idx = base_record.columns[RID_COLUMN]
             page_range = self.page_ranges[page_range_idx] # type: PageRange
             rid_inner_idx, rid_page = page_range.get_open_tail_page()
             rid_pid = [None, rid_inner_idx, page_range_idx]
-
+            self.bp.add_page(rid_pid,rid_page)
             # write rid
             self.prev_tid -= 1
             new_rid = self.prev_tid
@@ -276,32 +283,33 @@ class Table:
             num_records_in_page = rid_page.write(rid_in_bytes)
             rid_cell_idx = num_records_in_page - 1
             rid_pid[0] = rid_cell_idx
-            self.bp.add_page(rid_pid,rid_page)
+            
 
             _,_,page_range_idx = base_record.columns[TIMESTAMP_COLUMN]
             page_range = self.page_ranges[page_range_idx] # type: PageRange
             time_inner_idx, time_page = page_range.get_open_tail_page()
             time_pid = [None, time_inner_idx, page_range_idx]
-
+            self.bp.add_page(time_pid,time_page)
             # write Timestamp todo: all timestamps
             millisec = int(round(time.time()*1000))
             bytes_to_write = int_to_bytes(millisec)
             num_records_in_page = time_page.write(bytes_to_write)
             time_cell_idx = num_records_in_page - 1
             time_pid[0] = time_cell_idx
-            self.bp.add_page(time_pid,time_page)
+            
 
             _,_,page_range_idx = base_record.columns[SCHEMA_ENCODING_COLUMN]
             page_range = self.page_ranges[page_range_idx] # type: PageRange
             schema_inner_idx, schema_page = page_range.get_open_tail_page()
             schema_pid = [None, schema_inner_idx, page_range_idx]
+            self.bp.add_page(schema_pid,schema_page)
 
             # write encoding
             bytes_to_write = int_to_bytes(tail_schema_encoding)
             num_records_in_page = schema_page.write(bytes_to_write)
             schema_cell_idx = num_records_in_page - 1
             schema_pid[0] = schema_cell_idx
-            self.bp.add_page(schema_pid,schema_page)
+            
 
             meta_columns = [indirection_pid, rid_pid, time_pid, schema_pid]
 
@@ -319,19 +327,28 @@ class Table:
 
                 # Get/make open tail page from the respective og page range
                 inner_page_idx, tail_page = page_range.get_open_tail_page()
+
+                pid = [None, inner_page_idx, page_range_idx]
+                self.bp.add_page(pid, tail_page)
                 bytes_to_write = int_to_bytes(update_data[i])
                 num_records = tail_page.write(bytes_to_write)
                 cell_idx = num_records - 1
 
-                pid = [cell_idx, inner_page_idx, page_range_idx]
-                self.bp.add_page(pid,tail_page)
+                pid[0] = cell_idx
                 data_columns.append(pid)
 
             tail_record = MetaRecord(new_rid, key, meta_columns + data_columns)
             self.page_directory[new_rid] = tail_record
             # Update base record indirection and schema
             new_rid_bytes = int_to_bytes(new_rid)
+
+            if not base_indir_page.is_loaded:
+                base_indir_page = self.get_page(base_indir_page_pid)
+
             base_indir_page.write_to_cell(new_rid_bytes, base_indir_cell_idx)
+
+            if not base_enc_page.is_loaded:
+                base_enc_page = self.get_page(base_enc_page_pid)
 
             base_schema_enc_bytes = base_enc_page.read(base_enc_cell_idx)
             base_schema_enc_int = int_from_bytes(base_schema_enc_bytes)
@@ -349,9 +366,11 @@ class Table:
             self.key_index[key]
         except KeyError: 
             raise Exception("Not a valid key.")
+            return []
 
         if 0 == self.key_index[key]:
-            raise Exception("Key has been deleted.")
+            # raise Exception("Key has been deleted.")
+            return []
 
         collapsed = self.collapse_row(key, query_columns)
 
@@ -382,7 +401,7 @@ class Table:
             base_enc_pid = base_record.columns[SCHEMA_ENCODING_COLUMN]
             base_enc_bytes = self.read_pid(base_enc_pid)
             base_enc_binary = bin(int_from_bytes(base_enc_bytes))[2:].zfill(self.num_columns)
-            print(base_enc_pid, "Looking for data using schema",base_enc_binary)
+            # print(base_enc_pid, "Looking for data using schema",base_enc_binary)
             tps_all = resp.copy()
 
             for data_col_idx, is_dirty in enumerate(base_enc_binary):
@@ -457,7 +476,7 @@ class Table:
             # Start acquire lock ===========
 
             lock_attempts += 1
-            acquire_resp = acquire_all([self.merge_lock, self.rw_locks(base_rid), self.del_locks[base_rid]]) # todo: double check del locks
+            acquire_resp = acquire_all([self.merge_lock, self.rw_locks(base_rid), self.del_locks(base_rid)]) # todo: double check del locks
             if acquire_resp is False:
                 continue
 
@@ -500,7 +519,7 @@ class Table:
             release_all(locks)
             return True
 
-        del self.del_locks[base_rid]
+        del self._del_locks[base_rid]
         del self._rw_locks[base_rid]
 
 
