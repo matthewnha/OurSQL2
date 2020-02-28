@@ -23,7 +23,7 @@ def test1():
     keys = []
 
     db = Database()
-    db.open('~/ECS165')
+    db.open('~/BP_test')
     grades_table = db.create_table('Grades', 5, 0)
     query = Query(grades_table)
 
@@ -43,7 +43,7 @@ def test1():
 
     update_time_0 = process_time()
     for i in range(0, 10):
-        col = randint(0, 4)
+        col = randint(1, 4)
         val = randint(2000, 3000)
         data = [None, None, None, None, None]
         data[col] = val
@@ -59,7 +59,7 @@ def test1():
     del query
 
     imported_db = Database()
-    imported_db.open('~/ECS165')
+    imported_db.open('~/BP_test')
     grades_table = imported_db.get_table('Grades')
     query = Query(grades_table)
 
@@ -80,7 +80,7 @@ def test1():
 
     update_time_0 = process_time()
     for i in range(0, 10):
-        col = randint(0, 4)
+        col = randint(1, 4)
         val = randint(2000, 3000)
 
         data = [None, None, None, None, None]
@@ -91,13 +91,14 @@ def test1():
         expected[key][col] = val
 
 
+
     imported_db.close()
     del imported_db
     del imported_grades_table
     del imported_query
 
     db = Database()
-    db.open('~/ECS165')
+    db.open('~/BP_test')
     grades_table = db.get_tables("Grades")
     query = Query(grades_table)
 
@@ -113,7 +114,7 @@ def test1():
 
 def test2():
     db = Database()
-    db.open('~/ECS165')
+    db.open('~/BP_test')
 
     grades_table = db.create_table('Grades', 5, 0)
     query = Query(grades_table)
@@ -136,7 +137,7 @@ def test2():
     for i in range(1000):
 
         # update
-        col = randint(0, 4)
+        col = randint(1, 4)
         val = randint(0, 100)
 
         data = [None, None, None, None, None]
@@ -154,18 +155,22 @@ def test2():
 
     db.close()
 
-    db = Database()
-    db.open('~/ECS165')
+    del db
+    del query
+    del grades_table
 
-    grades_table = db.get_table("Grades")
-    query = Query(grades_table)
+    imported_db = Database()
+    imported_db.open('~/BP_test')
+
+    imported_grades_table = imported_db.get_table("Grades")
+    imported_query = Query(imported_grades_table)
 
     print('START FIRST SELECT')
 
     insert_time_0 = process_time()
     for i in range(10000, 20000):
         data = [i, i*10, i*20, i*30, i*40]
-        query.insert(*data)
+        imported_query.insert(*data)
 
         keys.append(i)
         expected[i] = data
@@ -173,23 +178,23 @@ def test2():
 
     for i in range(1000):
         # update
-        col = randint(0, 4)
+        col = randint(1, 4)
         val = randint(0, 100)
 
         data = [None, None, None, None, None]
         data[col] = val
         key = choice(keys)
 
-        query.update(key, *data)
+        imported_query.update(key, *data)
         expected[key][col] = val
         # print('{0:>20} : {1:<10}'.format('EXPECTED', str(expected)))
 
-        actual = query.select(key, [1,1,1,1,1])[0].columns
+        actual = imported_query.select(key, [1,1,1,1,1])[0].columns
         # print('{0:>20} : {1:<10}'.format('SEL MERGE', str(actual)))
         if expected[key] != actual:
             raise Exception('shit')
 
-    db.close()
+    imported_db.close()
 
     # [1, 100, 88, 7, 200]
 

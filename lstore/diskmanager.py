@@ -92,7 +92,7 @@ class DiskManager:
             num_columns = int_from_bytes(database_directory_file.read(CELL_SIZE_BYTES))
 
             new_table = Table(table_name,num_columns,key_col, self)
-            self.import_table(new_table) # type : Table
+            #self.import_table(new_table) # type : Table
 
             num_page_ranges = int_from_bytes(database_directory_file.read(CELL_SIZE_BYTES))
             new_table.page_ranges = [None]*num_page_ranges
@@ -179,10 +179,10 @@ class DiskManager:
         page_directory_size = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
         table.num_rows = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
 
-        d = meta_file.read(CELL_SIZE_BYTES).decode('utf-8') == 'bdeleted'
-        print(d)
+        
+        
 
-        if d == 'bdeleted':
+        if meta_file.read(CELL_SIZE_BYTES).decode('utf-8') == 'bdeleted':
             print("Getting deleted records")
             
             num_deleted_records = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
@@ -191,9 +191,9 @@ class DiskManager:
 
             for i in range(num_deleted_records):
 
-                key = meta_file.read(CELL_SIZE_BYTES).decode('utf-9')
-                if key == 'd0000000':
-                    print("Special key", key)
+                key = meta_file.read(CELL_SIZE_BYTES).decode()
+                #if key == 'd0000000':
+                    #print("Special key", key)
                     
                 columns = [None for _ in range(table.num_total_cols)]
                 
@@ -228,8 +228,7 @@ class DiskManager:
             rid = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
             key = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
 
-            if rid > table.prev_rid:
-                tail_flag = True
+            tail_flag = rid > table.prev_rid
 
             columns = [None for _ in range(table.num_total_cols)]
             
@@ -359,8 +358,7 @@ class DiskManager:
             current_rid = rids[counter]
             current_record = metarecords[counter]
 
-            if current_rid > table.prev_rid: # First tail rid
-                tail_flag = True
+            tail_flag = current_rid > table.prev_rid
 
             # Write rid and key
             data += int_to_bytes(current_rid)

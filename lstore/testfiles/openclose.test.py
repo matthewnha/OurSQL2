@@ -16,7 +16,7 @@ import statistics
 # print('Start stuff')
 
 db = Database()
-db.open('~/ECS165')
+db.open('~/OC_test')
 
 
 imported = False
