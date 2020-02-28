@@ -54,10 +54,13 @@ def test1():
 
 
     db.close()
+    del db
+    del grades_table
+    del query
 
-    db = Database()
-    db.open('~/ECS165')
-    grades_table = db.tables["Grades"]
+    imported_db = Database()
+    imported_db.open('~/ECS165')
+    grades_table = imported_db.get_table('Grades')
     query = Query(grades_table)
 
 
@@ -88,11 +91,14 @@ def test1():
         expected[key][col] = val
 
 
-    db.close()
+    imported_db.close()
+    del imported_db
+    del imported_grades_table
+    del imported_query
 
     db = Database()
     db.open('~/ECS165')
-    grades_table = db.tables["Grades"]
+    grades_table = db.get_tables("Grades")
     query = Query(grades_table)
 
     success = 0
@@ -151,7 +157,7 @@ def test2():
     db = Database()
     db.open('~/ECS165')
 
-    grades_table = db.tables["Grades"]
+    grades_table = db.get_table("Grades")
     query = Query(grades_table)
 
     print('START FIRST SELECT')

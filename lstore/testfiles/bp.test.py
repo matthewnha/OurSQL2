@@ -56,3 +56,13 @@ for row in inserted:
         raise Exception('Not match', fetched, row)
     else:
         print('Matched', fetched, row)
+
+query.insert(*[200,666,666,666,666])
+print(query.select(200,[1,1,1,1,1])[0].columns)
+query.update(105,*[None,None,None,100,None])
+print(query.select(105,[1, 1, 1, 1, 1])[0].columns)
+query.update(200,*[None,555,None,None,555])
+print(query.select(200,[1,1,1,1,1])[0].columns)
+query.update(200,*[1,None,55,None,None])
+print(query.select(200,[1,1,1,1,1])[0].columns)
+imported_db.close()
