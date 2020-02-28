@@ -10,12 +10,20 @@ class Page:
         if is_importing:
             self.data = None
             self.is_loaded = False
+            self.is_dirty = False
         else:
             self.data = bytearray(PAGE_SIZE)
             self.is_loaded = True
             self.write_tps(RESERVED_TID)
+            self.is_dirty = True
 
-        self.is_dirty = False
+    @property
+    def is_loaded(self):
+        return self.__is_loaded
+
+    @is_loaded.setter
+    def is_loaded(self, is_loaded):
+        self.__is_loaded = is_loaded
         
     # def set_pid(self,indexes):
     #     self.indexes = indexes
@@ -27,6 +35,7 @@ class Page:
         self.is_loaded = True
 
         return self
+
     
     def has_capacity(self):
         return self.num_records < (CELLS_PER_PAGE)
