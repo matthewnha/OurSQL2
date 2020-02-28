@@ -179,7 +179,43 @@ class DiskManager:
         page_directory_size = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
         table.num_rows = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
 
-        tail_flag = False
+        if meta_file.read(CELL_SIZE_BYTES).decode('utf-8') == 'bdeleted':
+            print("Getting deleted records")
+            
+            num_deleted_records = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
+
+            deleted_records = []
+
+            for i in range(num_deleted_records):
+
+                key = meta_file.read(CELL_SIZE_BYTES).decode('utf-9')
+                if key == 'd0000000':
+                    print("Special key", key)
+                    
+                columns = [None for _ in range(table.num_total_cols)]
+                
+                schema = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
+                schema_encoding = bin(schema)[2:].zfill(table.num_columns)[::-1]
+
+                for i in range(table.num_total_cols):
+                            
+                    if i >= START_USER_DATA_COLUMN and schema_encoding[i - START_USER_DATA_COLUMN] == '0':
+                        continue
+                    else:
+                        column = []
+                        for j in range(NUMBER_OF_DEXS):
+                            column.append(int_from_bytes(meta_file.read(CELL_SIZE_BYTES)))
+
+                        columns[i] = column
+
+                metarecord = MetaRecord(0,key,columns)
+                deleted_records.append(metarecord)
+                
+            if  meta_file.read(CELL_SIZE_BYTES).decode('utf-8') == 'edeleted':
+                self.table.page_directory[0] = deleted_records
+                print("End deleting records")
+            else:
+                print("Oops")
 
         for i in range(page_directory_size):
 
@@ -247,7 +283,7 @@ class DiskManager:
             binary_file = open(self.database_folder + sanitize(table_name) + '/' + sanitize(table_name) + "_meta", 'w+b')
 
         data = bytearray()
-
+        
         #
         # Write some globals
         #
@@ -256,13 +292,50 @@ class DiskManager:
         data += int_to_bytes(len(table.page_directory))
         data += int_to_bytes(table.num_rows)
 
+
+        # Writing deleted records with special key d0000000
+        if 0 in self.table.page_directory:
+                print("Writing deleted records")
+
+                data += 'bdeleted'.encode('utf-8')
+                
+                deleted_records = table.page_directory.pop(0)
+
+                data += len(deleted_records) # num deleted records
+                key = 'd0000000'.encode('utf-8')
+
+                for d_record in deleted_records:
+
+                    data += key
+                    the_columns = bytearray()
+                    schema = 0
+
+                    for i, column in enumerate(d_record):
+
+                        if column == None:
+                                continue
+                        else:
+
+                            if i >= START_USER_DATA_COLUMN:
+                                schema += 2**(i - START_USER_DATA_COLUMN)
+
+                            for dex in column:
+                                the_columns += int_to_bytes(dex)
+
+                        # Tells import_table which columns to ignore
+                        schema = int_to_bytes(schema)
+                        data += schema + the_columns
+
+                data += 'edeleted'.encode('utf-8')
+        else:
+            data += 'nodelete'.encode('utf-8')
+
         # key is the rid and value are the metarecords
         # columns point to the location in data
-
         num_of_rids = len(table.page_directory)
         rids = list(table.page_directory.keys()) # type : dict
         metarecords = list(table.page_directory.values())
-
+        
         tail_flag = False
         counter = 0
 
