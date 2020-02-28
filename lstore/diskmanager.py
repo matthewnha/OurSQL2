@@ -207,7 +207,8 @@ class DiskManager:
                     else:
                         column = []
                         for j in range(NUMBER_OF_DEXS):
-                            column.append(int_from_bytes(meta_file.read(CELL_SIZE_BYTES)))
+                            val = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
+                            column.append(val)
 
                         columns[i] = column
 
@@ -228,8 +229,7 @@ class DiskManager:
             rid = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
             key = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
 
-            if rid > table.prev_rid:
-                tail_flag = True
+            tail_flag = rid > table.prev_rid
 
             columns = [None for _ in range(table.num_total_cols)]
             
@@ -241,7 +241,8 @@ class DiskManager:
                     column = []
 
                     for j in range(NUMBER_OF_DEXS):
-                        column.append(int_from_bytes(meta_file.read(CELL_SIZE_BYTES)))
+                        val = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
+                        column.append(val)
 
                     columns[i] = column
 
@@ -259,7 +260,8 @@ class DiskManager:
                     else:
                         column = []
                         for j in range(NUMBER_OF_DEXS):
-                            column.append(int_from_bytes(meta_file.read(CELL_SIZE_BYTES)))
+                            val = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
+                            column.append(val)
 
                         columns[i] = column
 
@@ -359,8 +361,7 @@ class DiskManager:
             current_rid = rids[counter]
             current_record = metarecords[counter]
 
-            if current_rid > table.prev_rid: # First tail rid
-                tail_flag = True
+            tail_flag = current_rid > table.prev_rid
 
             # Write rid and key
             data += int_to_bytes(current_rid)
@@ -493,7 +494,7 @@ class DiskManager:
         inner_idx, pr_idx = page_key
 
         try:
-            binary_file = open(self.database_folder + "/" + table_folder + "/" + "pagerange_" + str(pr_idx), 'r+b')
+            binary_file = open(self.database_folder + "/" + table_folder + "/" + "pagerange_" + str(pr_idx), 'rb')
         except FileNotFoundError:
             return False
 
@@ -511,6 +512,7 @@ class DiskManager:
 
         page.num_records = num_records
         page.data = data
+        page.is_loaded = True
         # todo: is_dirty, pinning
 
         binary_file.close()
