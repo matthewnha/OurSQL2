@@ -24,6 +24,14 @@ class Page:
     @is_loaded.setter
     def is_loaded(self, is_loaded):
         self.__is_loaded = is_loaded
+
+    @property
+    def is_dirty(self):
+        return self.__is_loaded
+
+    @is_dirty.setter
+    def is_dirty(self, is_loaded):
+        self.__is_loaded = is_loaded
         
     # def set_pid(self,indexes):
     #     self.indexes = indexes

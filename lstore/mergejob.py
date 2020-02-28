@@ -145,7 +145,7 @@ class MergeJob:
             
             # Make sure the page is loaded first
             og_page.data = new_page.data
-            og_pata.is_dirty = True
+            og_pata .is_dirty = True
             # print('')
 
         # og_metacolumns  = og_record.columns[0:START_USER_DATA_COLUMN]

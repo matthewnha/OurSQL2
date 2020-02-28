@@ -43,7 +43,7 @@ def test1():
 
     update_time_0 = process_time()
     for i in range(0, 10):
-        col = randint(1, 4)
+        col = randint(0, 4)
         val = randint(2000, 3000)
         data = [None, None, None, None, None]
         data[col] = val
@@ -80,7 +80,7 @@ def test1():
 
     update_time_0 = process_time()
     for i in range(0, 10):
-        col = randint(1, 4)
+        col = randint(0, 4)
         val = randint(2000, 3000)
 
         data = [None, None, None, None, None]
@@ -140,7 +140,7 @@ def test2():
     for i in range(1000):
 
         # update
-        col = randint(1, 4)
+        col = randint(0, 4)
         val = randint(0, 100)
 
         data = [None, None, None, None, None]
@@ -185,7 +185,7 @@ def test2():
 
     for i in range(1000):
         # update
-        col = randint(1, 4)
+        col = randint(0, 4)
         val = randint(0, 100)
 
         data = [None, None, None, None, None]

@@ -10,7 +10,7 @@ class Database():
         self.my_manager.my_database = self
         pass
 
-    def open(self, path):
+    def open(self, path = "db_files"):
         self.my_manager.set_path(path)
         self.my_manager.open_db()
         pass

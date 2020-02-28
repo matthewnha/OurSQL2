@@ -9,7 +9,7 @@ import threading
 import time
 
 db = Database()
-
+db.open()
 grades_table = db.create_table('Grades', 5, 0)
 query = Query(grades_table)
 
