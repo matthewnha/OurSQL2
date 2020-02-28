@@ -20,6 +20,7 @@ class BufferPool:
         
         page_key = (pid[1],pid[2])
         index = self.num_pool_pages
+        
         if (page_key, page) in self.pages:
             index2 = self.pages.index((page_key, page))
             value = self.pages.pop(index2)
@@ -96,7 +97,7 @@ class BufferPool:
         # del self.page_index[page_key]
 
 
-        # print("Bufferpool was full, page removed", page_key, "at" , i)
+        print("Bufferpool was full, page removed", page_key, "at" , i)
     
     def write_new_page_range(self, page_range, num):
         # print("Writing new pagerange file, pagerange:", num, " in table",self.table.name)
@@ -111,7 +112,7 @@ class BufferPool:
 
     def get_page(self, pid):
 
-        cell_idx, page_idx, page_range_idx = pid
+        _, page_idx, page_range_idx = pid
         page_range = self.table.page_ranges[page_range_idx] # type: PageRange
         page = page_range.get_page(page_idx) # type: Page
 

@@ -48,7 +48,7 @@ class Table:
 
         self.page_ranges = []
         self.page_directory = {}
-        self.rw_locks = {} # only base records for now # Don't export
+        self._rw_locks = {} # only base records for now # Don't export
         self.del_locks = {} # Don't export
 
         self.merge_lock = threading.Lock() # Don't export
@@ -61,6 +61,12 @@ class Table:
         self.index = Index(self) # Don't export
 
         pass
+
+    def rw_locks(self, rid):
+        if rid not in self._rw_locks:
+            self._rw_locks[rid] = threading.Lock()
+
+        return self._rw_locks[rid]
 
     def get_page(self, pid) -> Page: # type: Page
         # cell_idx, page_idx, page_range_idx = pid
@@ -191,7 +197,7 @@ class Table:
             data_cols = [pid for pid, _ in column_pids_and_pages]
             record = MetaRecord(rid, key, sys_cols + data_cols)
             self.page_directory[rid] = record
-            self.rw_locks[rid] = threading.Lock()
+            self._rw_locks[rid] = threading.Lock()
             self.del_locks[rid] = threading.Lock()
             self.key_index[key] = rid
             self.num_rows += 1
@@ -207,7 +213,7 @@ class Table:
             # Start acquire lock ===========
 
             lock_attempts += 1
-            acquire_resp = acquire_all([self.merge_lock, self.rw_locks[base_rid]])
+            acquire_resp = acquire_all([self.merge_lock, self.rw_locks(base_rid)])
             if acquire_resp is False:
                 continue
 
@@ -363,14 +369,11 @@ class Table:
             # Start acquire lock ===========
 
             lock_attempts += 1
-            try:
-                acquire_resp = acquire_all([self.merge_lock, self.rw_locks[rid]])
-                if acquire_resp is False:
-                    continue
+            acquire_resp = acquire_all([self.merge_lock, self.rw_locks(rid)])
+            if acquire_resp is False:
+                continue
 
-                locks = acquire_resp
-            except KeyError: 
-                print("Haven't imported locks yet")
+            locks = acquire_resp
             
             # Acquired lock ===========
 
@@ -454,7 +457,7 @@ class Table:
             # Start acquire lock ===========
 
             lock_attempts += 1
-            acquire_resp = acquire_all([self.merge_lock, self.rw_locks[base_rid], self.del_locks[base_rid]])
+            acquire_resp = acquire_all([self.merge_lock, self.rw_locks(base_rid), self.del_locks[base_rid]]) # todo: double check del locks
             if acquire_resp is False:
                 continue
 
@@ -498,7 +501,7 @@ class Table:
             return True
 
         del self.del_locks[base_rid]
-        del self.rw_locks[base_rid]
+        del self._rw_locks[base_rid]
 
 
     def sum_records(self, start_range, end_range, aggregate_column_index):
