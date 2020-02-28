@@ -10,12 +10,13 @@ class Page:
         if is_importing:
             self.data = None
             self.is_loaded = False
+            self.is_dirty = False
         else:
             self.data = bytearray(PAGE_SIZE)
             self.is_loaded = True
             self.write_tps(RESERVED_TID)
+            self.is_dirty = True
 
-        self.is_dirty = False
         
     # def set_pid(self,indexes):
     #     self.indexes = indexes
