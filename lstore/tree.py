@@ -1,7 +1,7 @@
 from random import choice, randint, sample, seed
 #basic tree
 
-class Node(object):
+class Node:
     
     def __init__(self, nodeObjects):
         self.nodeObjects = nodeObjects
@@ -118,7 +118,7 @@ class Node(object):
             
 
 
-class BPlustTree(object):
+class BPlusTree:
     def __init__(self, nodeObjects = 4):
         self.root = Node(nodeObjects)
 
@@ -128,6 +128,9 @@ class BPlustTree(object):
                 return node.rids[i], i
         
         return node.rids[i+1], i+1
+
+    def find(self, node, key): #return index of key and its rids
+        return self._find(node, key)
 
     def _merge(self, parent, child, index):
         parent.rids.pop(index)
