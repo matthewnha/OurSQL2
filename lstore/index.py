@@ -1,4 +1,5 @@
 from tree import *
+from table import Table
 
 """
 A data strucutre holding indices for various columns of a table. Key column should be indexed by default, other columns can be indexed through this object. Indices are usually B-Trees, but other data structures can be used as well.
@@ -9,6 +10,7 @@ class Index:
     def __init__(self, table):
         # One index for each table. All our empty initially.
         self.indices = [None] *  table.num_columns
+        self.table = table
 
     """
     # returns the location of all records with the given value on column "column"
@@ -37,6 +39,7 @@ class Index:
 
     def remove(self, column_idx, key, rid):
         tree = self.indices[column_idx]
+
         if tree is None:
             raise Exception("This column is not indexed")
 
@@ -47,7 +50,8 @@ class Index:
     """
 
     def create_index(self, column_number):
-        self.indices[column_number] = BPlusTree()
+        self.indices[column_number] = BPlusTree(16)
+        for i in range(self.ta)
 
 
     """
@@ -55,4 +59,5 @@ class Index:
     """
 
     def drop_index(self, column_number):
+        self.indices[column_number] = None
         pass

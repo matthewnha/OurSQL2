@@ -63,7 +63,7 @@ for key in keys:
         if column != records[key][i]:
             error = True
     if error:
-        print('select error on', key, ':', record, ', correct:', records[key])
+        print('select error on', key, ':', record.column, ', correct:', records[key])
 print("Select finished")
 
 deleted_keys = sample(keys, 100)
