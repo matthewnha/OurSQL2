@@ -43,7 +43,7 @@ def encode_page(page: Page):
         data = bytearray(PAGE_SIZE)
     else:
         num_records = page.num_records
-        data = page.data
+        data = page._data
 
     out = b''
     out += int_to_bytes(num_records)  # 8
@@ -97,10 +97,12 @@ def decode_pagerange(BYTES_pr) -> PageRange:
     return pr
 
 def decode_page(BYTES_page) -> Page:
-    page = Page(True)
-    page.num_records = int_from_bytes(BYTES_page[0:8])
-    page.data = bytearray(BYTES_page[8:])
-    page.is_loaded = True
+    page = Page(True) # type: Page
+    # data, num_records=None, is_dirty=None, force=False):
+    # is_loaded = True
+    num_records = int_from_bytes(BYTES_page[0:8])
+    data = bytearray(BYTES_page[8:])
+    page.load(data, num_records)
     return page
 
 def fetch_pr_bytes(pr_idx):

@@ -166,49 +166,49 @@ class Table:
         if key in self.key_index:
             raise Exception('Key already exists')
 
-        with self.merge_lock:
-            # ORDER OF THESE LINES MATTER
-            indirection_pid, indirection_page = self.get_open_base_page(INDIRECTION_COLUMN)
-            rid_pid, rid_page = self.get_open_base_page(RID_COLUMN)
-            time_pid, time_page = self.get_open_base_page(TIMESTAMP_COLUMN)
-            schema_pid, schema_page = self.get_open_base_page(SCHEMA_ENCODING_COLUMN)
-            column_pids_and_pages = [self.get_open_base_page(START_USER_DATA_COLUMN + i) for i in range(self.num_columns)]
+        # with self.merge_lock:
+        # ORDER OF THESE LINES MATTER
+        indirection_pid, indirection_page = self.get_open_base_page(INDIRECTION_COLUMN)
+        rid_pid, rid_page = self.get_open_base_page(RID_COLUMN)
+        time_pid, time_page = self.get_open_base_page(TIMESTAMP_COLUMN)
+        schema_pid, schema_page = self.get_open_base_page(SCHEMA_ENCODING_COLUMN)
+        column_pids_and_pages = [self.get_open_base_page(START_USER_DATA_COLUMN + i) for i in range(self.num_columns)]
 
-            # RID
-            self.prev_rid += 1
-            rid = self.prev_rid
-            rid_in_bytes = int_to_bytes(rid)
-            num_records_in_page = rid_page.write(rid_in_bytes)
+        # RID
+        self.prev_rid += 1
+        rid = self.prev_rid
+        rid_in_bytes = int_to_bytes(rid)
+        num_records_in_page = rid_page.write(rid_in_bytes)
 
-            # Indirection
-            indirection_page.write(rid_in_bytes)
+        # Indirection
+        indirection_page.write(rid_in_bytes)
 
-            # Timestamp
-            millisec = int(round(time.time()*1000))
-            bytes_to_write = int_to_bytes(millisec)
-            cell_dex = time_page.write(bytes_to_write)
+        # Timestamp
+        millisec = int(round(time.time()*1000))
+        bytes_to_write = int_to_bytes(millisec)
+        cell_dex = time_page.write(bytes_to_write)
 
-            # Schema Encoding
-            schema_encoding = 0
-            bytes_to_write = int_to_bytes(schema_encoding)
-            schema_page.write(bytes_to_write)
+        # Schema Encoding
+        schema_encoding = 0
+        bytes_to_write = int_to_bytes(schema_encoding)
+        schema_page.write(bytes_to_write)
 
-            # User Data
-            for i, col_pid_and_page in enumerate(column_pids_and_pages):
-                col_pid, col_page = col_pid_and_page
-                bytes_to_write = int_to_bytes(columns_data[i])
-                col_page.write(bytes_to_write)
+        # User Data
+        for i, col_pid_and_page in enumerate(column_pids_and_pages):
+            col_pid, col_page = col_pid_and_page
+            bytes_to_write = int_to_bytes(columns_data[i])
+            col_page.write(bytes_to_write)
 
-            sys_cols = [indirection_pid, rid_pid, time_pid, schema_pid]
-            data_cols = [pid for pid, _ in column_pids_and_pages]
-            record = MetaRecord(rid, key, sys_cols + data_cols)
-            self.page_directory[rid] = record
-            self._rw_locks[rid] = threading.Lock()
-            self._del_locks[rid] = threading.Lock()
-            self.key_index[key] = rid
-            self.num_rows += 1
+        sys_cols = [indirection_pid, rid_pid, time_pid, schema_pid]
+        data_cols = [pid for pid, _ in column_pids_and_pages]
+        record = MetaRecord(rid, key, sys_cols + data_cols)
+        self.page_directory[rid] = record
+        self._rw_locks[rid] = threading.Lock()
+        self._del_locks[rid] = threading.Lock()
+        self.key_index[key] = rid
+        self.num_rows += 1
 
-            return True
+        return True
 
     def update_row(self, key, update_data):
         base_rid = self.key_index[key]
@@ -219,7 +219,8 @@ class Table:
             # Start acquire lock ===========
 
             lock_attempts += 1
-            acquire_resp = acquire_all([self.merge_lock, self.rw_locks(base_rid)])
+            # acquire_resp = acquire_all([self.merge_lock, self.rw_locks(base_rid)])
+            acquire_resp = acquire_all([self.rw_locks(base_rid)])
             if acquire_resp is False:
                 continue
 
@@ -241,8 +242,6 @@ class Table:
 
                 # Release locks and return
                 release_all(locks)
-                # self.rw_locks[base_rid].release()
-                # self.merge_lock.release()
                 return False
 
             # Get base record indirection
@@ -388,7 +387,8 @@ class Table:
             # Start acquire lock ===========
 
             lock_attempts += 1
-            acquire_resp = acquire_all([self.merge_lock, self.rw_locks(rid)])
+            # acquire_resp = acquire_all([self.merge_lock, self.rw_locks(rid)])
+            acquire_resp = acquire_all([self.rw_locks(rid)])
             if acquire_resp is False:
                 continue
 
@@ -476,7 +476,8 @@ class Table:
             # Start acquire lock ===========
 
             lock_attempts += 1
-            acquire_resp = acquire_all([self.merge_lock, self.rw_locks(base_rid), self.del_locks(base_rid)]) # todo: double check del locks
+            # acquire_resp = acquire_all([self.merge_lock, self.rw_locks(base_rid), self.del_locks(base_rid)]) # todo: double check del locks
+            acquire_resp = acquire_all([self.rw_locks(base_rid), self.del_locks(base_rid)]) # todo: double check del locks
             if acquire_resp is False:
                 continue
 

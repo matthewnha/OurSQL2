@@ -464,7 +464,7 @@ class DiskManager:
 
     # Todo
     def write_page(self, page, page_key, table, table_folder, num_base_pages = None):
-        if page.data == None:
+        if page._data == None:
             raise Exception("Page not loaded")
         
         inner_idx, pr_idx = page_key
@@ -490,7 +490,7 @@ class DiskManager:
         # print('pause')
 
     # Todo
-    def import_page(self, page, page_key, table, table_folder, num_base_pages = None):
+    def import_page(self, page: Page, page_key, table, table_folder, num_base_pages = None):
         inner_idx, pr_idx = page_key
 
         try:
@@ -511,8 +511,7 @@ class DiskManager:
         data = bytearray(binary_file.read(PAGE_SIZE))
 
         page.num_records = num_records
-        page.data = data
-        page.is_loaded = True
+        page.load(data, num_records)
         # todo: is_dirty, pinning
 
         binary_file.close()
