@@ -444,7 +444,7 @@ def demo_tree():
         elif rid[0] == key[1]:
             print("Successful find")
         else:
-            print("Error of key", key[0],"Rid is",key[1],"should be",rid[0])  
+            print("Error of key", key[0],"Rid is",rid,"should be",key[1])  
 
 if __name__ == "__main__":
    # demo_node()
