@@ -2,12 +2,42 @@ from db import Database
 from query import Query
 
 from random import choice, randint, sample, seed
+import threading
+import time
+from mergejob import MergeJob
 
 db = Database()
 db.open('~/ECS165')
 # Student Id and 4 grades
 grades_table = db.create_table('Grades', 5, 0)
 query = Query(grades_table)
+
+stop = False
+
+def merge_thread():
+    job = MergeJob(grades_table)
+    job.run()
+
+def schedule_merge():
+    while(1):
+        print('Merge starting.')
+        start = time.mktime(time.localtime())
+
+        merge = threading.Thread(target=merge_thread, args=())
+
+        merge.start()
+        merge.join()
+        # print('Merged')
+
+        end = time.mktime(time.localtime())
+        print('Merge done in', time.strftime("%X", time.localtime(end-start)))
+        time.sleep(5)
+
+        if stop:
+            return
+
+scheduler = threading.Thread(target=schedule_merge, args=())
+scheduler.start()
 
 records = {}
 seed(3562901)
@@ -61,3 +91,5 @@ for i in range(0, 100):
     #     print('sum on [', keys[r[0]], ',', keys[r[1]], ']: ', column_sum)
 print("Aggregate finished")
 db.close()
+
+stop = True

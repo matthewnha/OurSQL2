@@ -171,12 +171,12 @@ class BPlustTree(object):
             child, index = self._find(child,key)
 
         child.add(key, rid)
-        print("test")
+        # print("test")
         if child.isFull():
             child.split()
-            print("split happened")
+            # print("split happened")
             if parent and not parent.isFull():
-                print("At merge")
+                # print("At merge")
                 self._merge(parent, child, index)
 
 
@@ -195,7 +195,7 @@ class BPlustTree(object):
             if key == item:
                 for j, itemRID in enumerate(child.rids[i]):
                     if rid == itemRID:
-                        print("found RID")
+                        # print("found RID")
                         del(child.rids[i][j]) #perform the delete
                     if len(child.rids[i]) == 0: #if key is empty, remove key
                         del(child.keys[i])
@@ -203,10 +203,10 @@ class BPlustTree(object):
                         if(len(child.keys) < child.nodeObjects/2):
                             self.balance(parents, child)
                         #self.rids = self.rids[:i-1] + self.rids[i-1:]
-                    print("removed key")
+                    # print("removed key")
                     break
                 else:
-                    print("RID: ", child.rids[i][j])
+                    # print("RID: ", child.rids[i][j])
 
     def balance(self, parents, child):
 
@@ -290,30 +290,30 @@ def demo_node():
    # if (len(node.keys) >= 2):
     #    print("node full")
 
-def demo_tree():
-    print("Create tree")
+# def demo_tree():
+#     print("Create tree")
 
-    bplustree = BPlustTree(4)
-    print("add one item to tree")
-    bplustree.insert('a', 'alpha')
-    bplustree.getKeys()
-    bplustree.insert('b', 'bravo')
-    bplustree.insert('c', 'charlie')
-    bplustree.insert('d', 'delta')
-    bplustree.getKeys()
+#     bplustree = BPlustTree(4)
+#     print("add one item to tree")
+#     bplustree.insert('a', 'alpha')
+#     bplustree.getKeys()
+#     bplustree.insert('b', 'bravo')
+#     bplustree.insert('c', 'charlie')
+#     bplustree.insert('d', 'delta')
+#     bplustree.getKeys()
 
-    bplustree.insert('e', 'echo')
-    bplustree.getKeys()
-    print(bplustree.getRID('e'))
+#     bplustree.insert('e', 'echo')
+#     bplustree.getKeys()
+#     print(bplustree.getRID('e'))
 
-    bplustree.insert('f', 'foxtrot')
-    bplustree.insert('g', 'golf')
-    bplustree.insert('h', 'hotel')
-    bplustree.getKeys()
+#     bplustree.insert('f', 'foxtrot')
+#     bplustree.insert('g', 'golf')
+#     bplustree.insert('h', 'hotel')
+#     bplustree.getKeys()
 
-    bplustree.insert('h', 'honey')
-    bplustree.getKeys()
-    print(bplustree.getRID('h'))
+#     bplustree.insert('h', 'honey')
+#     bplustree.getKeys()
+#     print(bplustree.getRID('h'))
 
 
 def demo_treeNum():
@@ -322,7 +322,7 @@ def demo_treeNum():
     print("Start demo")
     keys = []
 
-    for i in range(64):
+    for i in range(16):
         key = randint(0, 9000)
         while key in keys:
             key = randint(0, 9000)
@@ -335,6 +335,7 @@ def demo_treeNum():
 
     deleted_keys = sample(keys, 2)
     for key in deleted_keys:
+        print(key)
         bplustree.remove(key[0],key[1])
     
     print(bplustree.getKeys())
@@ -394,13 +395,38 @@ def demo_treeNum():
 
         print("\n___________________________________________\n")
     
+
+def demo_tree():
+    seed(12345)
+    bplustree = BPlustTree(4)
+    print("Start demo")
+    keys = []
+
+    for i in range(64):
+        key = randint(0, 9000)
+        while key in keys:
+            key = randint(0, 9000)
+
+        bplustree.insert(key,i)
+        print(key, "Inserted at", i)
+        keys.append((key,i))
+
+    print(bplustree.getKeys())
+
+    for key in keys:
+        bplustree.find(key[0])
+    deleted_keys = sample(keys, 2)
+    for key in deleted_keys:
+        print(key)
+        bplustree.remove(key[0],key[1])
     
+    print(bplustree.getKeys())
 
 
 if __name__ == "__main__":
    # demo_node()
     #demo_tree()
-    demo_treeNum()
+    #demo_treeNum()
 
 
 

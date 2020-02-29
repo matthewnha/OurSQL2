@@ -1,21 +1,25 @@
 from config import *
 from util import *
 
+import threading
+
 class Page:
 
     def __init__(self, is_importing = False):
         self.num_records = 0
         # self.indexes = None
+        self.write_lock = threading.Lock()
 
         if is_importing:
-            self.data = None
+            self._data = None
             self.is_loaded = False
             self.is_dirty = False
         else:
-            self.data = bytearray(PAGE_SIZE)
+            self._data = bytearray(PAGE_SIZE)
             self.is_loaded = True
             self.write_tps(RESERVED_TID)
             self.is_dirty = True
+
 
     @property
     def is_loaded(self):
@@ -36,14 +40,30 @@ class Page:
     # def set_pid(self,indexes):
     #     self.indexes = indexes
 
-    def load(self, data, num_records):
-        if self.data == None:
-            self.data = data
-            self.num_records = num_records
-        self.is_loaded = True
+    def load(self, data, num_records=None, is_dirty=None, force=False):
+        with self.write_lock:
+            if self.is_loaded and not force:
+                return self
+
+            self.is_loaded = True
+            self._data = data
+
+            if num_records is not None:
+                self.num_records = num_records
+
+            if is_dirty is not None:
+                self.is_dirty = is_dirty
 
         return self
 
+    def unload(self, with_lock=True):
+        if with_lock:
+            with self.write_lock:
+                self._data = None
+                self.is_loaded = False
+        else: 
+            self._data = None
+            self.is_loaded = False
     
     def has_capacity(self):
         return self.num_records < (CELLS_PER_PAGE)
@@ -57,19 +77,19 @@ class Page:
 
             value: Must be bytes of the specified CELLS_PER_PAGE size
         '''
-        if not self.has_capacity():
-            raise Exception('page is full')
+        with self.write_lock:
+            if not self.has_capacity():
+                raise Exception('page is full')
 
-
-        start = (self.num_records + 1) * CELL_SIZE_BYTES
-        end = start + CELL_SIZE_BYTES
-        if len(value) != CELL_SIZE_BYTES:
-            value = int.from_bytes(value,'little')
-            value = value.to_bytes(CELL_SIZE_BYTES,'little')
-        self.data[start:end] = value
-        self.num_records += 1
-        self.is_dirty = True
-        return self.num_records
+            start = (self.num_records + 1) * CELL_SIZE_BYTES
+            end = start + CELL_SIZE_BYTES
+            if len(value) != CELL_SIZE_BYTES:
+                value = int.from_bytes(value,'little')
+                value = value.to_bytes(CELL_SIZE_BYTES,'little')
+            self._data[start:end] = value
+            self.num_records += 1
+            self.is_dirty = True
+            return self.num_records
 
     def write_to_cell(self, value, cell_idx):
         '''
@@ -78,26 +98,27 @@ class Page:
 
             value: Must be bytes of the specified CELLS_PER_PAGE size
         '''
-
-        start = (cell_idx + 1) * CELL_SIZE_BYTES
-        end = start + CELL_SIZE_BYTES
-        if len(value) != CELL_SIZE_BYTES:
-            value = int.from_bytes(value,'little')
-            value = value.to_bytes(CELL_SIZE_BYTES,'little')
-        self.data[start:end] = value
-        self.is_dirty = True
+        with self.write_lock:
+            start = (cell_idx + 1) * CELL_SIZE_BYTES
+            end = start + CELL_SIZE_BYTES
+            if len(value) != CELL_SIZE_BYTES:
+                value = int.from_bytes(value,'little')
+                value = value.to_bytes(CELL_SIZE_BYTES,'little')
+            self._data[start:end] = value
+            self.is_dirty = True
 
         return self.num_records
 
     def write_tps(self, tid):
-        bytes_to_write = tid.to_bytes(CELL_SIZE_BYTES,'little')
-        start = 0
-        end = start + CELL_SIZE_BYTES
-        self.data[start:end] = bytes_to_write
-        self.is_dirty = True
+        with self.write_lock:
+            bytes_to_write = tid.to_bytes(CELL_SIZE_BYTES,'little')
+            start = 0
+            end = start + CELL_SIZE_BYTES
+            self._data[start:end] = bytes_to_write
+            self.is_dirty = True
 
     def read_tps(self) -> int:
-        return int_from_bytes(bytes(self.data[0:CELL_SIZE_BYTES]))
+        return int_from_bytes(bytes(self._data[0:CELL_SIZE_BYTES]))
 
 
     def read(self, cellIndex):
@@ -110,11 +131,12 @@ class Page:
 
         start = (cellIndex + 1) * CELL_SIZE_BYTES
         end = start + CELL_SIZE_BYTES
-        return bytes(self.data[start:end])
+        return bytes(self._data[start:end])
 
     def copy(self):
-        copy = Page()
-        copy.data = self.data.copy()
-        copy.num_records = self.num_records
-        return copy
+        with self.write_lock:
+            copy = Page()
+            copy._data = self._data.copy()
+            copy.num_records = self.num_records
+            return copy
 

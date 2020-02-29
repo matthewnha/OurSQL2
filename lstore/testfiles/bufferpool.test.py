@@ -156,7 +156,7 @@ def test2():
 
         count += 1
         if expected[key] != actual:
-            raise Exception('shit')
+            raise Exception('Mismatch')
         else:
             success += 1
 

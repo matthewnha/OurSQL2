@@ -11,6 +11,7 @@ class MergeJob:
         self.copied_prev_rid = None
         self.min_tid = RESERVED_TID
         self.table = table # type: Table
+        self.to_unpin = []
 
     def copy_data(self):
         self.copied_prev_rid = self.table.prev_rid
@@ -25,8 +26,16 @@ class MergeJob:
             for pid in current_record.columns:
                 cell_idx, inner_idx, range_idx = pid
 
-                if (inner_idx, range_idx) not in copied_base_pages:
-                    copied_base_pages[(inner_idx, range_idx)] = self.table.get_page(pid)
+                page_key = (inner_idx, range_idx)
+                if page_key not in copied_base_pages:
+                    og_page = self.table.get_page(pid)
+
+                    self.table.bp.pin(page_key)
+                    if page_key not in self.to_unpin:
+                        self.to_unpin.append(page_key)
+
+                    copied_base_pages[(inner_idx, range_idx)] = og_page.copy()
+                    
                 
             copied_metarecords[rid] = current_record
 
@@ -140,22 +149,42 @@ class MergeJob:
 
         for i, pid in enumerate(merged_data_cols):
             cell_idx, inner_idx, range_idx = pid
-            new_page = self.copied_base_pages[(inner_idx, range_idx)]
+            page_key = (inner_idx, range_idx)
+            new_page = self.copied_base_pages[page_key]
+
             og_page = self.table.get_page(pid)
-            
+
             # Make sure the page is loaded first
-            og_page.data = new_page.data
-            og_pata .is_dirty = True
-            # print('')
+            with og_page.write_lock:
+                if not og_page.is_loaded:
+                    raise Exception("The original page isn't loaded")
+                data = new_page._data
+                if og_page.num_records != new_page.num_records:
+                    idx = new_page.num_records # also accounts for tps
+                    data = data[:idx] + og_page._data[idx:]
+
+                original_data = og_page._data
+                og_page._data = data
+                og_page.is_dirty = True
+                og_page.is_loaded = True
+                    
+                # og_page.load(new_page._data, is_dirty=True)
+            # og_page.data = new_page.data
+            # og_page.is_dirty = True
+            
 
         # og_metacolumns  = og_record.columns[0:START_USER_DATA_COLUMN]
         # merged_record.columns = og_metacolumns + merged_data_cols
         # self.table.page_directory[merged_record.rid] = merged_record
 
     def run(self):
+
+        self.table.merging = 1
         
         with self.table.merge_lock:
             self.copied_metarecords, self.copied_base_pages = self.copy_data()
+
+        self.table.merging = 2
 
         for rid in range(1, self.copied_prev_rid+1):
 
@@ -163,19 +192,21 @@ class MergeJob:
                 continue
 
             # Lock record from deletion
-            self.table._del_locks[rid].acquire()
+            self.table.del_locks(rid).acquire()
             if rid not in self.table.page_directory: # If we just acquired the del lock, we might've acquired it after a delete
-                self.table._del_locks[rid].release()
+                self.table.del_locks(rid).release()
                 # print('Got lock but the base record was deleted')
                 continue
 
+            self.table.merging = 3
             # Collapse
             base_record, data_cols = self.collapse_record(rid)
             self.write_collapsed_pages(base_record, data_cols)
 
             # Release lock
-            self.table._del_locks[rid].release()
+            self.table.del_locks(rid).release()
 
+        self.table.merging = 4
         self.write_tps_to_all()
 
         for rid in range(1, self.copied_prev_rid+1):
@@ -185,7 +216,7 @@ class MergeJob:
 
             # Lock record from rw/deletion
             while(1):
-                acquire_resp = acquire_all([self.table.rw_locks[rid], self.table._del_locks[rid]])
+                acquire_resp = acquire_all([self.table.rw_locks(rid), self.table.del_locks(rid)])
                 if acquire_resp is False:
                     continue
                 locks = acquire_resp
@@ -194,6 +225,7 @@ class MergeJob:
                     release_all(locks)
                     break
 
+                self.table.merging = 4
                 # Write back
                 metarecord = self.copied_metarecords[rid]
                 self.load_into_table(metarecord)
@@ -201,3 +233,12 @@ class MergeJob:
                 # Release lock
                 release_all(locks)
                 break
+
+        self.table.merging = 5
+        for page_key in self.to_unpin:
+            self.table.bp.unpin(page_key)
+
+        with self.table.merge_lock:
+            self.table.bp.flush_unpooled()
+
+        self.table.merging = 0
