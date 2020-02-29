@@ -433,13 +433,14 @@ def demo_tree():
 
     for key in keys:
         rid = bplustree.getRID(key[0])
-        if key in deleted_keys:
-            if rid == None:
+        if rid == None:
+            if key in deleted_keys:
+            
                 print("Key successful deleted")
         elif rid[0] == key[1]:
             print("Successful find")
         else:
-            print("Error of key", key[0],"Rid is",key[2],"should be",rid[0])  
+            print("Error of key", key[0],"Rid is",key[1],"should be",rid[0])  
 
 if __name__ == "__main__":
    # demo_node()
