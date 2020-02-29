@@ -60,6 +60,7 @@ class Table:
         self.bp = BufferPool(self, disk)
         self.key_index = {} # key -> base MetaRecord PID # Don't export
         self.index = Index(self) # Don't export
+        self.index.create_index(self.key_col)
 
         self.merging = 0
         self.updates_since_merge = 0
@@ -180,8 +181,12 @@ class Table:
     def create_row(self, columns_data):
         key = columns_data[self.key_col]
 
-        if key in self.key_index:
+        rids = self.index.locate(self.key_col, key)
+
+        # if key in self.key_index:
+        if rids is not None:
             raise Exception('Key already exists')
+            
 
         # with self.merge_lock:
         # ORDER OF THESE LINES MATTER
@@ -222,13 +227,15 @@ class Table:
         self.page_directory[rid] = record
         self._rw_locks[rid] = threading.Lock()
         self._del_locks[rid] = threading.Lock()
-        self.key_index[key] = rid
+        # self.key_index[key] = rid
+        self.index.insert(key, rid, self.key_col)
         self.num_rows += 1
 
         return True
 
     def update_row(self, key, update_data):
-        base_rid = self.key_index[key]
+        # base_rid = self.key_index[key]
+        base_rid = self.index.locate(self.key_col, key)
 
         # Start acquire lock ===========
         lock_attempts = 0
@@ -379,13 +386,18 @@ class Table:
 
     def select(self, key, query_columns):
 
+        # try:
+        #     self.key_index[key]
+        # except KeyError: 
+        #     return []
+
         try:
-            self.key_index[key]
-        except KeyError: 
-            raise Exception("Not a valid key.")
+            rid = self.index.locate(self.key_col, key)
+        except:
             return []
 
-        if 0 == self.key_index[key]:
+        # if 0 == self.key_index[key]:
+        if 0 == rid:
             # raise Exception("Key has been deleted.")
             return []
 
@@ -396,7 +408,8 @@ class Table:
 
     def collapse_row(self, key, query_columns):
         resp = [None for _ in query_columns]
-        rid = self.key_index[key]
+        # rid = self.key_index[key]
+        rid = self.index.locate(self.key_col, key)
         need = query_columns.copy()
 
         lock_attempts = 0
@@ -481,7 +494,8 @@ class Table:
     def delete_record(self, key):
 
         try:
-            base_rid = self.key_index[key]
+            # base_rid = self.key_index[key]
+            base_rid = self.index.locate(self.key_col, key)
         except KeyError:
             raise Exception("Not a valid key")
 
@@ -508,7 +522,8 @@ class Table:
             base_rid_cell_inx,_,_ = base_record.columns[RID_COLUMN]
 
             base_rid_page.write_to_cell(int_to_bytes(0),base_rid_cell_inx)
-            del self.key_index[key]
+            # del self.key_index[key]
+            self.index.remove(self.key_col, key, base_rid)
             if 0 in self.page_directory:
                 base_record.rid = 0
                 self.page_directory[0].append(base_record)
@@ -559,7 +574,8 @@ class Table:
 
         while curr_key != (end+1):            
             try:
-                curr_rid = self.key_index[curr_key]
+                # curr_rid = self.key_index[curr_key]
+                curr_rid = locate(self.key_col, curr_key)
             except KeyError:
                 curr_key += 1
                 continue

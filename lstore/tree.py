@@ -115,6 +115,7 @@ class Node():
             
 
 
+
 class BPlusTree(object):
     def __init__(self, nodeObjects = 4):
         self.root = Node(nodeObjects)
@@ -129,6 +130,9 @@ class BPlusTree(object):
         #else:
           #  return node.rids[i], i
 
+
+    def find(self, node, key): #return index of key and its rids
+        return self._find(node, key)
 
     def _merge(self, parent, child, index):
         parent.rids.pop(index)
