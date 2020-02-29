@@ -89,7 +89,7 @@ class Node(object):
             else:
                 ret += "`--"
         
-        ret += str(self.keys) + "\n"
+        ret += str(self.keys[::-1]) + "\n"
 
         if not self.isLeaf:
 
@@ -108,9 +108,6 @@ class Node(object):
         return ret
 
 
-
-
-
     def getKeys(self):
         bool = []
         to_print = self.key_helper(bool)
@@ -126,24 +123,45 @@ class BPlustTree(object):
         for i, item in enumerate(node.keys):
             if key < item:
                 return node.rids[i], i
-        
+                
+        #if i < len(node.keys) - 1:
         return node.rids[i+1], i+1
+        #else:
+          #  return node.rids[i], i
+
 
     def _merge(self, parent, child, index):
         parent.rids.pop(index)
         pivot = child.keys[0]
-        parent.add(pivot,child.rids)
-        # for i, item in enumerate(parent.keys):
-        #     if pivot < item:
-        #         parent.keys = parent.keys[:i] + [pivot] + parent.keys[i:]
-        #         parent.rids = parent.rids[:i] + child.rids + parent.rids[i:]
-        #         break
-            
-        #     elif i+1 == len(parent.keys):
-        #         parent.keys+= [pivot]
-        #         parent.rids += child.rids
-        #         break
+        
+        for i, item in enumerate(parent.keys):
 
+            if pivot < item:
+                parent.keys = parent.keys[:i] + [pivot] + parent.keys[i:]
+                left = parent.rids[:i]
+                right = parent.rids[i:]
+                for rid in child.rids: 
+                    left.append(rid)
+                parent.rids = left + right
+                break
+            
+            elif i+1 == len(parent.keys):
+
+                parent.keys.append(pivot)
+                for rid in child.rids:
+                    parent.rids.append(rid)
+                break
+# for i, item in enumerate(self.keys): #check for existing key in node
+#             
+#             elif key < item: #if key is beginning of node and key doesnt already exist
+#                 self.keys = self.keys[:i] + [key] + self.keys[i:] 
+#                 self.rids = self.rids[:i] + [[rid]] + self.rids[i:]
+#                 break
+#             elif i + 1 == len(self.keys): # check for end of node
+#                 self.keys.append(key) #add key to end of node
+#                 self.rids.append([rid])
+#                 break
+        
         
     def insert(self, key, rid):
         child = self.root
@@ -228,11 +246,7 @@ class BPlustTree(object):
                 current_key = sibling.keys.pop(i)
                 child.add(key, sibling.rids.pop(i))
             
-            parent.keys[index] = current_key
-    
-                    
-
-
+            parent.keys[index] = current_key            
 
 
     def getRID(self, key):
