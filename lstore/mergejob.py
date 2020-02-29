@@ -179,12 +179,12 @@ class MergeJob:
 
     def run(self):
 
-        self.table.bp.merging = 1
+        self.table.merging = 1
         
         with self.table.merge_lock:
             self.copied_metarecords, self.copied_base_pages = self.copy_data()
 
-        self.table.bp.merging = 2
+        self.table.merging = 2
 
         for rid in range(1, self.copied_prev_rid+1):
 
@@ -198,7 +198,7 @@ class MergeJob:
                 # print('Got lock but the base record was deleted')
                 continue
 
-            self.table.bp.merging = 3
+            self.table.merging = 3
             # Collapse
             base_record, data_cols = self.collapse_record(rid)
             self.write_collapsed_pages(base_record, data_cols)
@@ -206,7 +206,7 @@ class MergeJob:
             # Release lock
             self.table.del_locks(rid).release()
 
-        self.table.bp.merging = 4
+        self.table.merging = 4
         self.write_tps_to_all()
 
         for rid in range(1, self.copied_prev_rid+1):
@@ -225,7 +225,7 @@ class MergeJob:
                     release_all(locks)
                     break
 
-                self.table.bp.merging = 4
+                self.table.merging = 4
                 # Write back
                 metarecord = self.copied_metarecords[rid]
                 self.load_into_table(metarecord)
@@ -234,8 +234,11 @@ class MergeJob:
                 release_all(locks)
                 break
 
-        self.table.bp.merging = 5
+        self.table.merging = 5
         for page_key in self.to_unpin:
             self.table.bp.unpin(page_key)
 
-        self.table.bp.merging = 0
+        with self.table.merge_lock:
+            self.table.bp.flush_unpooled()
+
+        self.table.merging = 0

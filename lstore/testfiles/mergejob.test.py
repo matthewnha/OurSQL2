@@ -16,31 +16,6 @@ query = Query(grades_table)
 expected = [9399395, 5, 6, 7, 8]
 stop = False
 
-def merge_thread():
-    job = MergeJob(grades_table)
-    job.run()
-
-def schedule_merge():
-    while(1):
-        print('Merge starting.')
-        start = time.mktime(time.localtime())
-
-        merge = threading.Thread(target=merge_thread, args=())
-
-        merge.start()
-        merge.join()
-        # print('Merged')
-
-        end = time.mktime(time.localtime())
-        print('Merge done in', time.strftime("%X", time.localtime(end-start)))
-        time.sleep(5)
-
-        if stop:
-            return
-
-scheduler = threading.Thread(target=schedule_merge, args=())
-scheduler.start()
-
 success = 0
 count = 0
 
@@ -73,10 +48,6 @@ for i in range(10000):
     expected[key][col] = val
     # print('{0:>20} : {1:<10}'.format('EXPECTED', str(expected)))
 
-    # if i % 2000 == 0:
-    #     job = MergeJob(grades_table)
-    #     job.run()
-
     actual = query.select(key, [1,1,1,1,1])[0].columns
     # print('{0:>20} : {1:<10}'.format('SEL MERGE', str(actual)))
 
@@ -88,7 +59,7 @@ for i in range(10000):
         success += 1
 
 db.close()
-
+print(success, '/', count, 'successes')
 
 stop = True
 print('END FIRST SELECT')

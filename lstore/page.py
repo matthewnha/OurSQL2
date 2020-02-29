@@ -48,8 +48,12 @@ class Page:
 
         return self
 
-    def unload(self):
-        with self.write_lock:
+    def unload(self, with_lock=True):
+        if with_lock:
+            with self.write_lock:
+                self._data = None
+                self.is_loaded = False
+        else: 
             self._data = None
             self.is_loaded = False
     

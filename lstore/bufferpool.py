@@ -16,8 +16,6 @@ class BufferPool:
         # self.least_recently_used = []
         self.table = table # type: Table
 
-        self.merging = False
-
     def get_page(self, pid):
 
         _, page_idx, page_range_idx = pid
@@ -64,8 +62,6 @@ class BufferPool:
 
         return page
 
-
-
     def pop_page(self) -> Page:
         '''
         Pops page and decides via ? method (LRU/MRU)
@@ -81,11 +77,6 @@ class BufferPool:
             page_key, page_to_pop = self.pages[i]
             i += 1
 
-            # if self.pins[page_key] == 0:
-            #     pages_to_remove.append(self.pages.pop(i))
-            #     self.num_pool_pages -= 1
-            #     # print("Popping",page_key,i)
-
             pages_to_remove.append(self.pages.pop(i))
             self.num_pool_pages -= 1
 
@@ -96,19 +87,13 @@ class BufferPool:
 
             page_key, page_to_pop = page
 
-            if self.merging == 0 and (page_key not in self.pins or self.pins[page_key] == 0):
+            if self.table.merging == 0 and (page_key not in self.pins or self.pins[page_key] == 0):
                 if page_to_pop.is_dirty:
                     self.write_to_disk(page_key, page_to_pop)
 
                 page_to_pop.unload()
             else:
                 self.loaded_off_pool.append((page_key, page_to_pop))
-
-            # del self.pins[page_key]
-        # del self.page_index[page_key]
-
-
-        print("Done popping. Popped", num_pages_to_remove, "pages")
     
     def write_new_page_range(self, page_range, num):
         self.disk.write_page_range(page_range, num, self.table.name)
@@ -145,3 +130,14 @@ class BufferPool:
     def unpin(self, page_key):
         if self.pins[page_key] != 0:
             self.pins[page_key] -= 1
+
+    def flush_unpooled(self):
+        while self.loaded_off_pool:
+            page_key, page_to_pop = self.loaded_off_pool.pop()
+            with page_to_pop.write_lock:
+                if page_to_pop.is_dirty:
+                    self.write_to_disk(page_key, page_to_pop)
+
+                page_to_pop.unload(with_lock=False)
+
+            
