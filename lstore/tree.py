@@ -1,4 +1,4 @@
-
+from random import choice, randint, sample, seed
 #basic tree
 
 class Node(object):
@@ -8,6 +8,13 @@ class Node(object):
         self.isLeaf = True
         self.keys = []
         self.rids = []
+    @property
+    def isLeaf(self):
+        return self.__isLeaf
+
+    @isLeaf.setter
+    def isLeaf(self, is_Leaf):
+        self.__isLeaf = is_Leaf
 
     def add(self, key, rid):
         if not self.keys: #if keys is empty (root)
@@ -27,34 +34,33 @@ class Node(object):
                 self.keys.append(key) #add key to end of node
                 self.rids.append([rid])
                 break
+        
     
     def remove(self, key, rid):
-        for i, item in enumerate(self.keys):
-            print("keys: ", self.keys[i])
-            if key == item:
-                for j, itemRID in enumerate(self.rids[i]):
-                   # print("RID: ", self.rids[i][j])
-                    if rid == itemRID:
-                        print("found RID")
-                        del(self.rids[i][j]) #perform the delete
-                        if len(self.rids[i]) == 0: #if key is empty, remove key
-                            del(self.keys[i])
-                            self.rids.remove([])
-                            #self.rids = self.rids[:i-1] + self.rids[i-1:]
-                            print("removed key")
-                        break
-
-                    else:
-                        print("RID not found")
-            else:
-                print("Key not found")
+        # if self.isLeaf == True:
+        #     for i, item in enumerate(self.keys):
+        #         if key == item:
+        #             if rid == itemRID:
+        #                 print("found RID")
+        #                 del(self.rids[i][j]) #perform the delete
+        #             if len(self.rids[i]) == 0: #if key is empty, remove key
+        #                 del(self.keys[i])
+        #                 self.rids.remove([])
+        #                 #self.rids = self.rids[:i-1] + self.rids[i-1:]
+        #                 print("removed key")
+        #                 break
+        #             else:
+        #                 print("RID not found")
+        #     print("keys: ", self.keys[i])
+        #            # print("RID: ", self.rids[i][j])
+        pass      
             
     def split(self):
     #split and send to child nodes
         #left and right inherit number of objects
         left = Node(self.nodeObjects) 
         right = Node(self.nodeObjects)
-        mid = self.nodeObjects/2
+        mid = self.nodeObjects//2
 
         left.keys = self.keys[:mid]
         left.rids = self.rids[:mid]
@@ -64,18 +70,52 @@ class Node(object):
 
         self.keys = [right.keys[0]]
         self.rids = [left, right]
+
         self.isLeaf = False
 
     def isFull(self):
-        len(self.keys) == self.nodeObjects
+        return len(self.keys) == self.nodeObjects
 
-    def getKeys(self, counter = 0):
-        print(counter)
-        print(str(self.keys))
+    def key_helper(self, bool, ret=""):
+        if bool:
+            for val in bool:
+                if val:
+                    ret += "|  "
+                else:
+                    ret += "   "
+            
+            if bool[-1]:
+                ret += "|--" 
+            else:
+                ret += "`--"
+        
+        ret += str(self.keys) + "\n"
 
         if not self.isLeaf:
-            for item in self.rids:
-                item.getKeys(counter+1)
+
+            for val in self.rids:
+
+                if val != self.rids[-1]:
+                    bool.append(True)
+
+                else:
+                    bool.append(False) 
+
+                if isinstance(val,Node):
+                    ret = val.key_helper(bool, ret) 
+                    bool.pop()
+
+        return ret
+
+
+
+
+
+    def getKeys(self):
+        bool = []
+        to_print = self.key_helper(bool)
+        return to_print
+            
 
 
 class BPlustTree(object):
@@ -92,23 +132,22 @@ class BPlustTree(object):
     def _merge(self, parent, child, index):
         parent.rids.pop(index)
         pivot = child.keys[0]
-
-        for i, item in enumerate(parent.keys):
-            if pivot < item:
-                parent.keys = parent.keys[:i] + [pivot] + parent.keys[i:]
-                parent.rids = parent.rids[:i] + child.rids + parent.rids[i:]
-                break
+        parent.add(pivot,child.rids)
+        # for i, item in enumerate(parent.keys):
+        #     if pivot < item:
+        #         parent.keys = parent.keys[:i] + [pivot] + parent.keys[i:]
+        #         parent.rids = parent.rids[:i] + child.rids + parent.rids[i:]
+        #         break
             
-            elif i+1 == len(parent.keys):
-                parent.keys+= [pivot]
-                parent.rids += child.rids
-                break
+        #     elif i+1 == len(parent.keys):
+        #         parent.keys+= [pivot]
+        #         parent.rids += child.rids
+        #         break
 
         
     def insert(self, key, rid):
-        parent = None
         child = self.root
-        
+        parent = None
         while not child.isLeaf:
             parent = child
             child, index = self._find(child,key)
@@ -119,10 +158,82 @@ class BPlustTree(object):
             child.split()
             print("split happened")
             if parent and not parent.isFull():
+                print("At merge")
                 self._merge(parent, child, index)
 
+
     def remove(self, key, rid):
-        self.root.remove(key, rid)
+        parents = []
+        prev_node = self.root
+        child = self.root
+
+        while not child.isLeaf:
+
+            child, index = self._find(child, key)
+            parents.append((prev_node, index))
+            prev_node = child
+
+        for i, item in enumerate(child.keys):
+            if key == item:
+                for j, itemRID in enumerate(child.rids[i]):
+                    if rid == itemRID:
+                        print("found RID")
+                        del(child.rids[i][j]) #perform the delete
+                    if len(child.rids[i]) == 0: #if key is empty, remove key
+                        del(child.keys[i])
+                        child.rids.remove([])
+                        if(len(child.keys) < child.nodeObjects/2):
+                            self.balance(parents, child)
+                        #self.rids = self.rids[:i-1] + self.rids[i-1:]
+                    print("removed key")
+                    break
+                else:
+                    print("RID: ", child.rids[i][j])
+
+    def balance(self, parents, child):
+
+        if parents:
+            parent, index = parents.pop()
+        else:
+            return None
+
+        sibling_index = index
+        to_the_left = False
+        if index < len(parent.keys)-1:
+            sibling_index += 1
+        else:
+            sibling_index += -1
+            to_the_left = True
+        
+        sibling = parent.rids[sibling_index]
+        
+        if len(sibling.keys) <= sibling.nodeObjects/2 + 1:
+            for i, key in enumerate(sibling.keys):
+                child.add(key, sibling.keys.pop(i))
+
+            if to_the_left:
+                del parent.keys[sibling_index]
+            else:
+                del parent.keys[index]
+
+            del parent.rids[sibling_index]
+            del sibling
+
+            if len(parent.keys) < parent.nodeObjects//2:
+                self.balance(parents, parent)
+        else: 
+            i = 0
+            while i < len(sibling.keys) and len(child.keys) < child.nodeObjects/2:
+
+                current_key = sibling.keys.pop(i)
+                child.add(key, sibling.rids.pop(i))
+            
+            parent.keys[index] = current_key
+    
+                    
+
+
+
 
     def getRID(self, key):
         child = self.root
@@ -137,7 +248,7 @@ class BPlustTree(object):
     
 
     def getKeys(self):
-        self.root.getKeys()
+        return self.root.getKeys()
 
 
 def demo_node():
@@ -192,9 +303,30 @@ def demo_tree():
 
 
 def demo_treeNum():
+    seed(12345)
     bplustree = BPlustTree(4)
     print("Start demo")
+    keys = []
+
+    for i in range(64):
+        key = randint(0, 9000)
+        while key in keys:
+            key = randint(0, 9000)
+
+        bplustree.insert(key,i)
+        print(key, "Inserted at", i)
+        keys.append((key,i))
+
+    print(bplustree.getKeys())
+
+    deleted_keys = sample(keys, 2)
+    for key in deleted_keys:
+        bplustree.remove(key[0],key[1])
+    
+    print(bplustree.getKeys())
+
     while True:
+
         command = input("Enter a command: ")
 
         if command == 'exit':
@@ -203,21 +335,44 @@ def demo_treeNum():
         elif command == 'insert':
             insertvalue = input("Enter key value: ")
             insertRID = input("Enter corresponding RID: ")
+            while(1):
+                try: 
+                    insertvalue = int(insertvalue)
+                    insertRID = int(insertRID)
+                    break
+                except ValueError:
+                    insertvalue = input("Enter key as interger: ")
+                    insertRID = input("Enter RID as interger: ")
+
             bplustree.insert(insertvalue, insertRID)
             print("inserted")
 
         elif command == 'remove':
             insertvalue = input("Enter key value: ")
             insertRID = input("Enter corresponding RID: ")
+            while(1):
+                try: 
+                    insertvalue = int(insertvalue)
+                    insertRID = int(insertRID)
+                    break
+                except ValueError:
+                    insertvalue = input("Enter key as interger: ")
+                    insertRID = input("Enter RID as interger: ")
             bplustree.remove(insertvalue, insertRID)
             print(bplustree.getRID(insertvalue))
 
         elif command == 'find':
             readRID = input("Enter key value to display RIDs: ")
+            while(1):
+                try: 
+                    readRID = int(readRID)
+                    break
+                except ValueError:
+                    readRID = input("Enter key value as integar to display RIDs: ")
             print(bplustree.getRID(readRID))
         
         elif command == 'keys':
-            bplustree.getKeys()
+            print(bplustree.getKeys())
         
         else:
             print("Not valid input")
