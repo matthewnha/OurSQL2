@@ -1,7 +1,7 @@
 from random import choice, randint, sample, seed
 #basic tree
 
-class Node(object):
+class Node():
     
     def __init__(self, nodeObjects):
         self.nodeObjects = nodeObjects
@@ -74,7 +74,7 @@ class Node(object):
         self.isLeaf = False
 
     def isFull(self):
-        return len(self.keys) == self.nodeObjects
+        return len(self.keys) == self.nodeObjects + 1
 
     def key_helper(self, bool, ret=""):
         if bool:
@@ -115,7 +115,7 @@ class Node(object):
             
 
 
-class BPlustTree(object):
+class BPlusTree(object):
     def __init__(self, nodeObjects = 4):
         self.root = Node(nodeObjects)
 
@@ -201,14 +201,15 @@ class BPlustTree(object):
                         del(child.keys[i])
                         child.rids.remove([])
                         if(len(child.keys) < child.nodeObjects/2):
-                            self.balance(parents, child)
+                            self._balance(parents, child)
                         #self.rids = self.rids[:i-1] + self.rids[i-1:]
                     # print("removed key")
                     break
                 else:
+                    return None
                     # print("RID: ", child.rids[i][j])
 
-    def balance(self, parents, child):
+    def _balance(self, parents, child):
 
         if parents:
             parent, index = parents.pop()
@@ -238,13 +239,13 @@ class BPlustTree(object):
             del sibling
 
             if len(parent.keys) < parent.nodeObjects//2:
-                self.balance(parents, parent)
+                self._balance(parents, parent)
         else: 
             i = 0
             while i < len(sibling.keys) and len(child.keys) < child.nodeObjects/2:
 
                 current_key = sibling.keys.pop(i)
-                child.add(key, sibling.rids.pop(i))
+                child.add(current_key, sibling.rids.pop(i))
             
             parent.keys[index] = current_key            
 
@@ -334,6 +335,7 @@ def demo_treeNum():
     print(bplustree.getKeys())
 
     deleted_keys = sample(keys, 2)
+    
     for key in deleted_keys:
         print(key)
         bplustree.remove(key[0],key[1])
@@ -398,11 +400,11 @@ def demo_treeNum():
 
 def demo_tree():
     seed(12345)
-    bplustree = BPlustTree(4)
+    bplustree = BPlusTree(4)
     print("Start demo")
     keys = []
 
-    for i in range(64):
+    for i in range(100):
         key = randint(0, 9000)
         while key in keys:
             key = randint(0, 9000)
@@ -414,18 +416,34 @@ def demo_tree():
     print(bplustree.getKeys())
 
     for key in keys:
-        bplustree.find(key[0])
-    deleted_keys = sample(keys, 2)
+        rid = bplustree.getRID(key[0])
+
+        if rid[0] == key[1]:
+            print("Successful find")
+        else:
+            print("Error of key", key[0],"Rid is",key[1],"should be",rid[0])  
+
+
+    deleted_keys = sample(keys, 10)
     for key in deleted_keys:
         print(key)
         bplustree.remove(key[0],key[1])
     
     print(bplustree.getKeys())
 
+    for key in keys:
+        rid = bplustree.getRID(key[0])
+        if key in deleted_keys:
+            if rid == None:
+                print("Key successful deleted")
+        elif rid[0] == key[1]:
+            print("Successful find")
+        else:
+            print("Error of key", key[0],"Rid is",key[2],"should be",rid[0])  
 
 if __name__ == "__main__":
    # demo_node()
-    #demo_tree()
+    demo_tree()
     #demo_treeNum()
 
 
