@@ -37,7 +37,7 @@ def schedule_merge():
             return
 
 scheduler = threading.Thread(target=schedule_merge, args=())
-scheduler.start()
+# scheduler.start()
 
 records = {}
 seed(3562901)

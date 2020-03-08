@@ -10,7 +10,7 @@ class Index:
     def __init__(self, table):
         # One index for each table. All our empty initially.
         self.indices = [None] *  table.num_columns
-        self.table = table
+        self.table = table # type : Table
 
     """
     # returns the location of all records with the given value on column "column"
@@ -50,8 +50,18 @@ class Index:
     """
 
     def create_index(self, column_number):
+        
         self.indices[column_number] = BPlusTree(16)
-        for i in range(self.ta)
+
+        table_keys = self.table.key_index.keys()
+        table_rids = self.table.key_index.values()
+
+        table_col = [None for a in self.table.num_columns]
+        table_col[self.table.key_col] = 1
+
+        for i in range(len(self.table.key_index)):
+            value = table.select(table_keys[i],table_col)[0].column[self.table.key_col]
+            self.indices[column_number].insert(value,table_rids[i])
 
 
     """
