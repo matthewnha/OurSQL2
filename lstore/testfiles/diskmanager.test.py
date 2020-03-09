@@ -108,5 +108,5 @@ for key in records:
 
 # copy_table = filereader.read_files()
 db.close()
-print('done')
+# print('done')
 

@@ -40,9 +40,11 @@ class DiskManager:
         try:
             os.mkdir(path, access_rights)
         except OSError:
-            print ("Creation of the directory %s failed" % path)
+            # print ("Creation of the directory %s failed" % path)
+            pass
         else:
-            print ("Successfully created the directory %s" % path)
+            # print ("Successfully created the directory %s" % path)
+            pass
 
 
     # Todo
@@ -74,9 +76,11 @@ class DiskManager:
         try:
             os.mkdir(self.database_folder)
         except OSError:
-            print ("Creation of the directory %s failed" % self.database_folder)
+            # print ("Creation of the directory %s failed" % self.database_folder)
+            pass
         else:
             print ("Successfully created the directory %s" % self.database_folder)
+            pass
 
         try: 
             database_directory_file = open(self.database_folder + "Database_Directory", 'r+b')
@@ -183,7 +187,7 @@ class DiskManager:
         
 
         if meta_file.read(CELL_SIZE_BYTES).decode('utf-8') == 'bdeleted':
-            print("Getting deleted records")
+            # print("Getting deleted records")
             
             num_deleted_records = int_from_bytes(meta_file.read(CELL_SIZE_BYTES))
 
@@ -308,7 +312,7 @@ class DiskManager:
 
         # Writing deleted records with special key d0000000
         if 0 in table.page_directory:
-            print("Writing deleted records")
+            # print("Writing deleted records")
 
             data += 'bdeleted'.encode('utf-8')
             

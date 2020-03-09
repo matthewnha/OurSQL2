@@ -80,12 +80,12 @@ class Table:
     def schedule_merge(self):
 
         def start_merge():
-            print('Starting merge')
+            # print('Starting merge')
             job = MergeJob(self)
             self.merging = 1
             job.run()
             self.merging = 0
-            print('Merged')
+            # print('Merged')
 
         if self.merging <= 0:
             merge = threading.Thread(target=start_merge, args=())

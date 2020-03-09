@@ -13,32 +13,6 @@ grades_table = db.get_table('Grades')
 query = Query(grades_table)
 
 
-stop = False
-def merge_thread():
-    job = MergeJob(grades_table)
-    job.run()
-
-def schedule_merge():
-    while(1):
-        print('Merge starting.')
-        start = time.mktime(time.localtime())
-
-        merge = threading.Thread(target=merge_thread, args=())
-
-        merge.start()
-        merge.join()
-        # print('Merged')
-
-        end = time.mktime(time.localtime())
-        print('Merge done in', time.strftime("%X", time.localtime(end-start)))
-        time.sleep(5)
-
-        if stop:
-            return
-
-scheduler = threading.Thread(target=schedule_merge, args=())
-scheduler.start()
-
 # repopulate with random data
 records = {}
 seed(3562901)
