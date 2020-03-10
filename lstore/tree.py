@@ -34,7 +34,7 @@ class Node():
     def right(self):
         return self.__right
 
-    @left.setter
+    @right.setter
     def right(self, right):
         self.__right = right
 
@@ -112,15 +112,23 @@ class Node():
                 self.keys = [left.keys[-1]]
 
                 
-        else:        
+        else:
             left.rids = self.rids[:mid]
             right.rids = self.rids[mid:]
             self.keys = [right.keys[0]]
 
             left.right = right
             left.left = self.left
+
             right.left = left
             right.right = self.right
+
+            if self.left != None:
+                self.left.right = left
+
+            if self.right != None:
+                self.right.left = right
+            
 
 
         self.rids = [left, right]
@@ -249,15 +257,17 @@ class BPlusTree(object):
             child.add(key, rid)
 
         if child.is_full():
+
             child.split()
 
             if self.root == child:
-                self.left == child.rids[0]
-                self.right == child.rids[1]
+                self.left = child.rids[0]
+                self.right = child.rids[1]
             elif self.right == child:
                 self.right = child.rids[1]
             elif self.left == child:
                 self.left = child.rids[0]
+
             if parents and not parents[-1][0].is_full():
                 self._merge(parents, child)
 
@@ -332,7 +342,6 @@ class BPlusTree(object):
     def consolidate(self, indexes, child, sibling, parent, flags):
         index, sibling_index = indexes
         to_the_left, is_Leafs = flags
-        i = 0
 
         while sibling.keys or sibling.rids:
             if is_Leafs:
@@ -348,7 +357,6 @@ class BPlusTree(object):
                         child.rids.insert(i,sibling.rids.pop(0))
                     else:
                         child.rids.append(sibling.rids.pop(0))
-            i += 1
 
         if not child.is_leaf and child.rids[0].is_leaf:
             child.update_keys()
@@ -410,7 +418,40 @@ class BPlusTree(object):
         if not child.is_leaf and child.rids[0].is_leaf:
             child.update_keys()
 
-    def bulk_search()    
+    def bulk_search(self, start, end):
+
+        current_node = self.root
+        while not current_node == None and not current_node.is_leaf:
+            current_node, index = self._find(current_node, start)
+        
+        rids_to_return = []
+        # sum = 0
+        current_key = start
+        
+        while current_key <= end and current_node != None:
+
+            for i, key in enumerate(current_node.keys):
+
+                if key >= current_key and key <= end:
+                    current_key = key
+
+                    rids_to_return += (current_node.rids[i],current_key)
+            
+            current_node = current_node.right
+                    
+        return rids_to_return
+
+    def get_all_leaves(self):
+
+        current_node = self.left
+        return_data = [self.root.keys]
+
+        while current_node != None:
+            return_data.append((current_node.keys,current_node.rids))
+            print(current_node.keys,"next")
+            current_node = current_node.right
+
+        return return_data
 
     def get_rid(self, key):
         child = self.root
@@ -431,12 +472,13 @@ class BPlusTree(object):
 
 
 def demo_treeNum():
-    # seed(123245)
-    bplustree = BPlustTree(5)
+    seed(123245)
+    max_keys = int(input("\n Input max keys:"))
+    bplustree = BPlusTree(max_keys)
     print("Start demo")
     keys = []
 
-    for i in range(16):
+    for i in range(100):
         key = randint(0, 9000)
         while key in keys:
             key = randint(0, 9000)
@@ -447,13 +489,13 @@ def demo_treeNum():
 
     print(bplustree.get_keys())
 
-    deleted_keys = sample(keys, 2)
+    # deleted_keys = sample(keys, 2)
     
-    for key in deleted_keys:
-        print(key)
-        bplustree.remove(key[0],key[1])
+    # for key in deleted_keys:
+    #     print(key)
+    #     bplustree.remove(key[0],key[1])
     
-    print(bplustree.get_keys())
+    # print(bplustree.get_keys())
 
     while True:
 
@@ -571,8 +613,8 @@ def demo_tree():
 
 if __name__ == "__main__":
    # demo_node()
-    demo_tree()
-    #demo_treeNum()
+    #demo_tree()
+    demo_treeNum()
 
 
 
