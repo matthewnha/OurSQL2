@@ -28,7 +28,8 @@ class Index:
     """
 
     def locate_range(self, begin, end, column):
-        pass
+        tree = self.indices[column]
+        return tree.bulk_search(begin,end)
 
     def insert(self, val, rid, column_idx):
         tree = self.indices[column_idx]
@@ -50,17 +51,20 @@ class Index:
     """
 
     def create_index(self, column_number):
-        
+        if column_number >= self.table.num_columns:
+            print("Out of range")
+            return None
+
         self.indices[column_number] = BPlusTree(16)
 
         table_keys = self.table.key_index.keys()
         table_rids = self.table.key_index.values()
 
         table_col = [None for a in self.table.num_columns]
-        table_col[self.table.key_col] = 1
+        table_col[column_number] = 1
 
         for i in range(len(self.table.key_index)):
-            value = table.select(table_keys[i],table_col)[0].column[self.table.key_col]
+            value = table.select(table_keys[i],table_col)[0].column[column_number]
             self.indices[column_number].insert(value,table_rids[i])
 
 
@@ -70,4 +74,9 @@ class Index:
 
     def drop_index(self, column_number):
         self.indices[column_number] = None
+
+    def write_index(self):
+        pass
+
+    def read_index(self):
         pass

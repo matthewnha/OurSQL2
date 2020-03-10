@@ -435,7 +435,7 @@ class BPlusTree(object):
                 if key >= current_key and key <= end:
                     current_key = key
 
-                    rids_to_return += (current_node.rids[i],current_key)
+                    rids_to_return += current_node.rids[i]
             
             current_node = current_node.right
                     
