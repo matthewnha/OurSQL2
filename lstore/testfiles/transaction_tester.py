@@ -1,13 +1,13 @@
-from template.db import Database
-from template.query import Query
-from template.transaction import Transaction
-from template.transaction_worker import TransactionWorker
+from db import Database
+from query import Query
+from transaction import Transaction
+from transaction_worker import TransactionWorker
 
 import threading
 from random import choice, randint, sample, seed
 
 db = Database()
-db.open('/home/pkhorsand/165a-winter-2020-private/db')
+db.open('~/OurSQL')
 grades_table = db.create_table('Grades', 5, 0)
 
 keys = []
