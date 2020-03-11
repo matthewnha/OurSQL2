@@ -12,7 +12,8 @@ grades_table = db.create_table('Grades', 5, 0)
 
 keys = []
 records = {}
-num_threads = 8
+# num_threads = 8
+num_threads = 1
 seed(8739878934)
 
 # Generate random records

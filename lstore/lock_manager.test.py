@@ -1,6 +1,7 @@
 from lock_manager import *
 import threading
 from time import sleep
+import util
 
 # lock = Lock(0)
 
@@ -73,56 +74,64 @@ from time import sleep
 # for thread in threads:
 #   thread.join()
 
-a = Resource()
-b = Resource()
-c = Resource()
-d = Resource()
+# a = Resource()
+# b = Resource()
+# c = Resource()
+# d = Resource()
 
-def thread_a():
-    acquire_resp = acquire_all([a.x_lock, b.s_lock, c.s_lock])
-    if acquire_resp is False:
-        print("A: Couldn't acquire all locks")
-        return
+# def thread_a():
+#     acquire_resp = acquire_all([a.x_lock, b.s_lock, c.s_lock])
+#     if acquire_resp is False:
+#         print("A: Couldn't acquire all locks")
+#         return
 
-    locks = acquire_resp
-    print("A: Acquired all locks")
+#     locks = acquire_resp
+#     print("A: Acquired all locks")
 
-    sleep(5)
-    release_all(locks)
-    print("A: Released all locks")
+#     sleep(5)
+#     release_all(locks)
+#     print("A: Released all locks")
 
-def thread_b():
-    acquire_resp = acquire_all([d.x_lock, c.s_lock, b.x_lock])
-    if acquire_resp is False:
-        print("B: Couldn't acquire all locks")
-        return
+# def thread_b():
+#     acquire_resp = acquire_all([d.x_lock, c.s_lock, b.x_lock])
+#     if acquire_resp is False:
+#         print("B: Couldn't acquire all locks")
+#         return
 
-    locks = acquire_resp
-    print("B: Acquired all locks")
+#     locks = acquire_resp
+#     print("B: Acquired all locks")
 
-    sleep(5)
-    release_all(locks)
-    print("B: Released all locks")
+#     sleep(5)
+#     release_all(locks)
+#     print("B: Released all locks")
 
-def thread_c():
-    sleep(8)
+# def thread_c():
+#     sleep(8)
 
-    acquire_resp = acquire_all([d.x_lock])
-    if acquire_resp is False:
-        print("C: Couldn't acquire all locks")
-        return
+#     acquire_resp = acquire_all([d.x_lock])
+#     if acquire_resp is False:
+#         print("C: Couldn't acquire all locks")
+#         return
 
-    locks = acquire_resp
-    print("C: Acquired all locks")
+#     locks = acquire_resp
+#     print("C: Acquired all locks")
 
-    sleep(5)
-    release_all(locks)
-    print("C: Released all locks")
+#     sleep(5)
+#     release_all(locks)
+#     print("C: Released all locks")
 
-threads = [threading.Thread(target=thread_a, args=()), threading.Thread(target=thread_b, args=()), threading.Thread(target=thread_c, args=())]
+# threads = [threading.Thread(target=thread_a, args=()), threading.Thread(target=thread_b, args=()), threading.Thread(target=thread_c, args=())]
 
-for thread in threads:
-  thread.start()
+# for thread in threads:
+#   thread.start()
 
-for thread in threads:
-  thread.join()
+# for thread in threads:
+#   thread.join()
+
+lm = LockManager()
+a = lm.get("a")
+b = lm.get("b")
+c = lm.get("c")
+
+results = util.acquire_all([a.x_lock, b.x_lock, c.x_lock])
+print(results)

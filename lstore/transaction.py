@@ -22,6 +22,7 @@ class Transaction:
         self.queries = []
         self.timestamp = time.time()
         self.locks = []
+        self.acquired_locks = []
 
     """
     # Adds the given query to this transaction
@@ -49,6 +50,14 @@ class Transaction:
 
     # If you choose to implement this differently this method must still return True if transaction commits or False on abort
     def run(self):
+        
+        acquire_resp = util.acquire_all(self.locks)
+        if acquire_resp is False:
+            print("Couldn't acquire all locks", threading.currentThread())
+            return self.abort()
+
+        self.acquired_locks = acquire_resp
+
         for query, args in self.queries:
             result = query(*args)
             # If the query has failed the transaction should abort
@@ -62,5 +71,6 @@ class Transaction:
 
     def commit(self):
         # TODO: commit to database
+        util.release_all(self.acquired_locks)
         return True
 
