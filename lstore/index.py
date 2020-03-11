@@ -65,16 +65,10 @@ class Index:
         tree.remove(key, rid)
 
     def remove_by_rid(self, column, rid):
-
-        tree = self.indices[column]
-
-        if tree is None:
-            raise Exception("This column is not indexed")
-    
         key = self.locate_by_rid(rid , column)
 
         if key != None:
-            self.remove(key,rid)
+            self.remove(key, rid, column)
         
     def update_index(self, column, new_key, rid):
 
