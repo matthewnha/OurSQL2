@@ -191,10 +191,11 @@ class Table:
     def create_row(self, columns_data):
         key = columns_data[self.key_col]
 
-        rids = self.index.locate(self.key_col, key)
+        
+        # rids = self.index.locate(self.key_col, key)
 
-        # if key in self.key_index:
-        if rids is not None:
+        if key in self.key_index:
+        #if rids is not None:
             raise Exception('Key already exists')
             
 
@@ -249,8 +250,8 @@ class Table:
         return True
 
     def update_row(self, key, update_data):
-        # base_rid = self.key_index[key]
-        base_rid = self.index.locate(self.key_col, key)
+        base_rid = self.key_index[key]
+        # base_rid = self.index.locate(self.key_col, key)
 
         # Start acquire lock ===========
         lock_attempts = 0
@@ -394,14 +395,7 @@ class Table:
         bytes_to_write = int_to_bytes(new_base_enc)
         base_enc_page.write_to_cell(bytes_to_write, base_enc_cell_idx)
 
-        
-        # for i in range(len(update_data)):
-        #     if '0' == tail_schema_encoding_binary[i]:
-        #         continue
-        #     elif self.indices.is_indexed(i):
-        #         self.indices.remove(i,)
-        #         self.indices.insert(update_data[i],base_rid,i)
-        
+        self.update_index(tail_schema_encoding_binary, update_data, base_rid)
         release_all(locks)
 
         self.updates_since_merge += 1
@@ -410,32 +404,55 @@ class Table:
 
         return True
 
-    def select(self, key, query_columns):
+    def update_indices(self, tail_schema, update_data, base_rid):
+        for col in range(len(update_data)):
+            if '1' == tail_schema[col] and self.indices.is_indexed(col):
+                self.indices.update_index(base_rid, update_data[col], col)
+                
 
-        # try:
-        #     self.key_index[key]
-        # except KeyError: 
-        #     return []
+    def select(self, key, column, query_columns):
 
-        try:
-            rid = self.index.locate(self.key_col, key)
-        except:
-            return []
+        if column == self.key_col:
+            try:
+                rid = self.key_index[key]
+            except KeyError: 
+                return []
 
-        # if 0 == self.key_index[key]:
-        if 0 == rid:
-            # raise Exception("Key has been deleted.")
-            return []
+            # if 0 == self.key_index[key]:
+            if 0 == rid:
+                # raise Exception("Key has been deleted.")
+                return []
 
-        collapsed = self.collapse_row(key, query_columns)
+            collapsed = self.collapse_row(rid, query_columns)
 
-        record = Record(None, key, collapsed)
-        return [record]
+            record = Record(None, key, collapsed)
+            return [record]
 
-    def collapse_row(self, key, query_columns):
+        else:
+            if not self.indices.is_indexed(column):
+                self.indices.create_index(column)
+
+            try:
+                rids = self.index.locate(column, key)
+            except:
+                return []
+
+            records = []
+            query_columns[column] = 0
+
+            for rid in rids:
+
+                collapsed = self.collapse_row(rid, query_columns)
+                collasped[column] = key
+                record = Record(None, key, collapsed)
+                records.append(record)
+            
+            return records
+
+    def collapse_row(self, rid, query_columns):
         resp = [None for _ in query_columns]
         # rid = self.key_index[key]
-        rid = self.index.locate(self.key_col, key)
+        # rid = self.index.locate(self.key_col, key)
         need = query_columns.copy()
 
         lock_attempts = 0
@@ -548,8 +565,8 @@ class Table:
             base_rid_cell_inx,_,_ = base_record.columns[RID_COLUMN]
 
             base_rid_page.write_to_cell(int_to_bytes(0),base_rid_cell_inx)
-            # del self.key_index[key]
-            self.index.remove(self.key_col, key, base_rid)
+            del self.key_index[key]
+            # self.index.remove(self.key_col, key, base_rid)
             if 0 in self.page_directory:
                 base_record.rid = 0
                 self.page_directory[0].append(base_record)
