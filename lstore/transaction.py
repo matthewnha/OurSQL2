@@ -3,8 +3,12 @@ from index import Index
 import time
 import threading
 import util
+from lock_manager import *
+
 
 gathering_lock = threading.Lock()
+x_queries = ["insert", "update", "delete", "increment"]
+s_queries = ["select", "sum"]
 
 class Transaction:
 
@@ -14,6 +18,7 @@ class Transaction:
     def __init__(self):
         self.queries = []
         self.timestamp = time.time()
+        self.locks = []
 
     """
     # Adds the given query to this transaction
@@ -23,9 +28,17 @@ class Transaction:
     # t.add_query(q.update, 0, *[None, 1, None, 2, None])
     """
     def add_query(self, query, *args):
-        with gathering_lock:
-            # gather the locks
-            pass
+        print('query name', query.__name__)
+        query_name = query.__name__
+
+        r = Resource() # todo: get proper resource
+
+        if query_name in x_queries:
+            self.locks.append(r.x_lock)
+        elif query_name in s_queries:
+            self.locks.append(r.s_lock)
+        else:
+            raise Exception("Unknown query")
 
         self.queries.append((query, args))
 

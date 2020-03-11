@@ -9,6 +9,8 @@ def with_merge_lock(f):
         with table.merge_lock:
             return f(*args)
 
+    wrapper.__name__ = f.__name__
+
     return wrapper
 class Query:
     """
@@ -54,8 +56,8 @@ class Query:
 
     # should probably be implemented by table
     @with_merge_lock
-    def select(self, key, query_columns):
-        return self.table.select(key, query_columns)
+    def select(self, key, column, query_columns):
+        return self.table.select(key, column, query_columns)
 
     """
     # Update a record with specified key and columns
@@ -84,12 +86,13 @@ class Query:
     # Returns True is increment is successful
     # Returns False if no record matches key or if target record is locked by 2PL.
     """
-    
     def increment(self, key, column):
-        r = self.select(key, self.table.key, [1] * self.table.num_columns)[0]
-        if r is not False:
+        r = self.select(key, self.table.key_col, [1] * self.table.num_columns)
+        # if r is not False:
+        if len(r) > 0:
+            r = r[0]
             updated_columns = [None] * self.table.num_columns
-            updated_columns[column] = r[column] + 1
+            updated_columns[column] = r.columns[column] + 1
             u = self.update(key, *updated_columns)
             return u
         return False

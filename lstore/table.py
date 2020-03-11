@@ -192,7 +192,7 @@ class Table:
         key = columns_data[self.key_col]
 
         
-        # rids = self.index.locate(self.key_col, key)
+        # rids = self.indices.locate(self.key_col, key)
 
         if key in self.key_index:
         #if rids is not None:
@@ -235,7 +235,7 @@ class Table:
             col_page.write(bytes_to_write)
 
             if self.indices.is_indexed(i):
-                self.index.insert(columns_data[i], rid, i)
+                self.indices.insert(columns_data[i], rid, i)
 
         sys_cols = [indirection_pid, rid_pid, time_pid, schema_pid]
         data_cols = [pid for pid, _ in column_pids_and_pages]
@@ -245,13 +245,13 @@ class Table:
         self._del_locks[rid] = threading.Lock()
 
         self.key_index[key] = rid
-        # self.index.insert(key, rid, self.key_col)
+        # self.indices.insert(key, rid, self.key_col)
         self.num_rows += 1
         return True
 
     def update_row(self, key, update_data):
         base_rid = self.key_index[key]
-        # base_rid = self.index.locate(self.key_col, key)
+        # base_rid = self.indices.locate(self.key_col, key)
 
         # Start acquire lock ===========
         lock_attempts = 0
@@ -400,7 +400,7 @@ class Table:
         bytes_to_write = int_to_bytes(new_base_enc)
         base_enc_page.write_to_cell(bytes_to_write, base_enc_cell_idx)
 
-        self.update_index(tail_schema_encoding_binary, update_data, base_rid)
+        self.update_indices(tail_schema_encoding_binary, update_data, base_rid)
         release_all(locks)
 
         self.updates_since_merge += 1
@@ -453,7 +453,7 @@ class Table:
                 self.indices.create_index(column)
 
             try:
-                rids = self.index.locate(column, key)
+                rids = self.indices.locate(column, key)
             except:
                 return []
 
@@ -472,7 +472,7 @@ class Table:
     def collapse_row(self, rid, query_columns):
         resp = [None for _ in query_columns]
         # rid = self.key_index[key]
-        # rid = self.index.locate(self.key_col, key)
+        # rid = self.indices.locate(self.key_col, key)
         need = query_columns.copy()
 
         lock_attempts = 0
@@ -558,7 +558,7 @@ class Table:
 
         try:
             # base_rid = self.key_index[key]
-            base_rid = self.index.locate(self.key_col, key)
+            base_rid = self.indices.locate(self.key_col, key)
         except KeyError:
             raise Exception("Not a valid key")
 
@@ -586,7 +586,7 @@ class Table:
 
             base_rid_page.write_to_cell(int_to_bytes(0),base_rid_cell_inx)
             del self.key_index[key]
-            # self.index.remove(self.key_col, key, base_rid)
+            # self.indices.remove(self.key_col, key, base_rid)
             if 0 in self.page_directory:
                 base_record.rid = 0
                 self.page_directory[0].append(base_record)
@@ -644,7 +644,7 @@ class Table:
         while curr_key != (end+1):            
             try:
                 curr_rid = self.key_index[curr_key]
-                #curr_rid = locate(self.key_col, curr_key)
+                # curr_rid = self.indices.locate(self.key_col, curr_key)
             except KeyError:
                 curr_key += 1
                 continue

@@ -1,5 +1,6 @@
 import threading
 
+
 def with_protection(f):
     def wrapper(*args):
         lock_inst = args[0]
@@ -8,153 +9,116 @@ def with_protection(f):
 
     return wrapper
 
+
 class XLock:
-  def __init__(self, parent):
-    self.protection = threading.Lock()
-    self.owner = None
-    self.parent = parent
-
-  @with_protection
-  def acquire(self): 
-    '''
-    User acquiring lock
-    '''
-
-    curr_thread = threading.currentThread()
-
-    if curr_thread == self.owner:
-      return True
-
-    if self.owner != None or len(self.parent.get_shared()) > 0:
-      return False
-    
-    self.owner = curr_thread
-    return True
-
-  @with_protection
-  def release(self):
-
-    curr_thread = threading.currentThread()
-
-    if self.owner != curr_thread:
-      raise Exception("Trying to release non-existant x lock")
-
-    self.owner = None
-
-class SLock:
-    def __init__(self, parent):
-      self.protection = threading.Lock()
-      self.owners = []
-      self.parent = parent
+    def __init__(self, resource):
+        self.protection = threading.Lock()
+        self.owner = None
+        self.resource = resource
 
     @with_protection
-    def acquire_s_lock(self): 
-      '''
-      User acquiring lock
-      '''
+    def acquire(self, block):
+        '''
+        User acquiring lock
 
-      curr_thread = threading.currentThread()
-      
-      if curr_thread in self.shared:
+        block: compatibility, ignored
+        '''
+
+        curr_thread = threading.currentThread()
+
+        if curr_thread == self.owner:
+            return True
+
+        if self.owner != None or self.resource.get_shared_count() > 0:
+            return False
+
+        self.owner = curr_thread
         return True
 
-      if self.parent.get_exclusive() != None:
-        return False
-      
-      self.ownered.append(curr_thread)
-      return True
+    @with_protection
+    def release(self):
 
-class Lock:
-  def __init__(self, id):
-    self.id = id
+        curr_thread = threading.currentThread()
 
-    self.protection = threading.Lock()
+        if self.owner != curr_thread:
+            raise Exception("Trying to release non-existant x lock")
 
-    self.shared = []
-    self.exclusive = None
+        self.owner = None
 
-  @with_protection
-  def acquire_x_lock(self, lockee): 
-    '''
-    User acquiring lock
-    '''
+    @with_protection
+    def is_locked(self):
+        return self.owner != None
 
-    lockee = threading.currentThread()
 
-    if lockee == self.exclusive:
-      return True
+class SLock:
+    def __init__(self, resource):
+        self.protection = threading.Lock()
+        self.owners = []
+        self.resource = resource
 
-    if self.exclusive != None or len(self.shared) > 0:
-      return False
-    
-    self.exclusive = lockee
-    return True
+    @with_protection
+    def acquire(self, block):
+        '''
+        User acquiring lock
 
-  @with_protection
-  def acquire_s_lock(self, lockee): 
-    '''
-    User acquiring lock
-    '''
+        block: compatibility, ignored
+        '''
 
-    lockee = threading.currentThread()
-    
-    if lockee in self.shared:
-      return True
+        curr_thread = threading.currentThread()
 
-    if self.exclusive != None:
-      return False
-    
-    self.shared.append(lockee)
-    return True
+        if curr_thread in self.owners:
+            return True
 
-  @with_protection
-  def release_x_lock(self, lockee):
+        if self.resource.is_x_locked():
+            return False
 
-    lockee = threading.currentThread()
+        self.owners.append(curr_thread)
+        return True
 
-    if self.exclusive != lockee:
-      raise Exception("Trying to release non-existant x lock")
+    @with_protection
+    def release(self):
 
-    self.exclusive = None
+        curr_thread = threading.currentThread()
 
-  @with_protection
-  def release_s_lock(self, lockee):
+        try:
+            idx = self.owners.index(curr_thread)
+            del self.owners[idx]
+        except ValueError:
+            raise Exception("Trying to release non-existant s lock")
 
-    lockee = threading.currentThread()
+    @with_protection
+    def get_count(self):
+        return len(self.owners)
 
-    try:
-      idx = self.shared.index(lockee)
-      del self.shared[idx]
-    except ValueError:
-      raise Exception("Trying to release non-existant s lock")
 
-class LockManager:
-  def __init__(self):
-    self.locks = {}
+class Resource:
+    def __init__(self):
+        self.x_lock = XLock(self)
+        self.s_lock = SLock(self)
 
-def get_lock(self, id):
-  if id not in self.locks:
-    self.locks[id] = Lock(id)
-  return self.locks[id]
+    def is_x_locked(self):
+        return self.x_lock.is_locked()
+
+    def get_shared_count(self):
+        return self.s_lock.get_count()
 
 def acquire_all(locks):
-  acquired = []
+    acquired = []
 
-  for lock in locks:
-      is_acquired = lock.acquire(False)
+    for lock in locks:
+        is_acquired = lock.acquire(False)
 
-      if not is_acquired:
-          for to_release in acquired:
-              to_release.release()
+        if not is_acquired:
+            for to_release in acquired:
+                to_release.release()
 
-          # print('Couldn\'t acquire all locks')
-          return False
+            # print('Couldn\'t acquire all locks')
+            return False
 
-      acquired.insert(0, lock)
+        acquired.insert(0, lock)
 
-  return acquired
-
+    return acquired
 
 def release_all(locks):
-  for lock in locks:
-      lock.release()
+    for lock in locks:
+        lock.release()
