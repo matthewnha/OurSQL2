@@ -3,8 +3,12 @@ from index import Index
 import time
 import threading
 import util
+from lock_manager import *
+
 
 gathering_lock = threading.Lock()
+x_queries = ["insert", "update", "delete", "increment"]
+s_queries = ["select", "sum"]
 
 class Transaction:
 
@@ -25,6 +29,17 @@ class Transaction:
     """
     def add_query(self, query, *args):
         print('query name', query.__name__)
+        query_name = query.__name__
+
+        r = Resource() # todo: get proper resource
+
+        if query_name in x_queries:
+            self.locks.append(r.x_lock)
+        elif query_name in s_queries:
+            self.locks.append(r.s_lock)
+        else:
+            raise Exception("Unknown query")
+
         self.queries.append((query, args))
 
     # If you choose to implement this differently this method must still return True if transaction commits or False on abort

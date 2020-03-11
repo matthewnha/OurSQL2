@@ -395,7 +395,7 @@ class Table:
         bytes_to_write = int_to_bytes(new_base_enc)
         base_enc_page.write_to_cell(bytes_to_write, base_enc_cell_idx)
 
-        self.update_index(tail_schema_encoding_binary, update_data, base_rid)
+        self.update_indices(tail_schema_encoding_binary, update_data, base_rid)
         release_all(locks)
 
         self.updates_since_merge += 1
@@ -594,7 +594,7 @@ class Table:
                     new_tail_rid = int_from_bytes(new_tail_rid)
 
             # Release locks and return
-            for column self.indices.indices:
+            for column in self.indices.indices:
                 if self.indices.is_indexed(column):
                     self.indices.remove_by_rid(column, base_rid)
 

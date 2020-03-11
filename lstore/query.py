@@ -9,6 +9,8 @@ def with_merge_lock(f):
         with table.merge_lock:
             return f(*args)
 
+    wrapper.__name__ = f.__name__
+
     return wrapper
 class Query:
     """
