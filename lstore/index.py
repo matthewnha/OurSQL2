@@ -12,6 +12,9 @@ class Index:
         self.indices = [None] *  table.num_columns
         self.table = table # type : Table
 
+    def is_indexed(self, column):
+        return not (self.indices[column] == None)
+
     """
     # returns the location of all records with the given value on column "column"
     """
@@ -23,21 +26,26 @@ class Index:
 
         return tree.get_rid(value)
 
+    def locate_by_rid(self,rid, column):
+        tree = self.indices[column]
+        if tree is None:
+            raise Exception("This column is not indexed")
+
+        return tree.find_by_rid(rid)
+
     """
     # Returns the RIDs of all records with values in column "column" between "begin" and "end"
     """
 
-    def is_indexed(self, column):
-        return not (self.indices[column] == None)
 
     def locate_range(self, begin, end, column):
-        tree = self.indices[column_idx]
+        tree = self.indices[column]
         if tree is None:
             raise Exception("This column is not indexed")
         return tree.bulk_search(begin,end)
 
     def sum_range(self, begin, end, column):
-        tree = self.indices[column_idx]
+        tree = self.indices[column]
         if tree is None:
             raise Exception("This column is not indexed")
         return tree.sum_range(begin, end, column)
@@ -56,14 +64,22 @@ class Index:
 
         tree.remove(key, rid)
 
-    def update_index(self, column_idx, key, new_key, rid):
-        tree = self.indices[column_idx]
+    def remove_by_rid(self, column, rid):
+
+        tree = self.indices[column]
 
         if tree is None:
             raise Exception("This column is not indexed")
+    
+        key = self.locate_by_rid(rid , column)
 
-        tree.remove(key,rid)
-        tree.insert(new_key,rid)
+        if key != None:
+            self.remove(key,rid)
+        
+    def update_index(self, column, new_key, rid):
+
+        self.remove_by_rid(column, rid)
+        self.insert(new_key,rid, column)
 
     """
     # optional: Create index on specific column
@@ -93,9 +109,4 @@ class Index:
 
     def drop_index(self, column_number):
         self.indices[column_number] = None
-
-    def write_index(self):
-        pass
-
-    def read_index(self):
-        pass
+ 

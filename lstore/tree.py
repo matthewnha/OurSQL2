@@ -271,8 +271,6 @@ class BPlusTree(object):
             if parents and not parents[-1][0].is_full():
                 self._merge(parents, child)
 
-
-
     def remove(self, key, rid):
 
         parents = []
@@ -291,6 +289,23 @@ class BPlusTree(object):
                 self._balance(parents, child)
 
         return None
+
+    def find_by_rid(self, rid):
+
+        current_node = self.left
+        key = None
+
+        while current_node != None and key != None:
+
+            for i ,rids in enumerate(current_node.rids):
+                for cur_rid in rids:
+                    if cur_rid == rid:
+                        key = current_node.keys[i]
+                        current_node.remove(key,rid)
+
+
+        return key
+        
 
     def _balance(self, parents, child):
 
