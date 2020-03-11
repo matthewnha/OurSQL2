@@ -55,7 +55,9 @@ class Table:
         self.merge_lock = threading.Lock() # Don't export
 
         self.prev_rid = 0
+        self.rid_latch = threading.Lock()
         self.prev_tid = 2**64 - 1
+        self.tid_latch = threading.Lock()
 
         self.bp = BufferPool(self, disk)
         self.key_index = {} # key -> base MetaRecord PID # Don't export
@@ -197,7 +199,9 @@ class Table:
         column_pids_and_pages = [self.get_open_base_page(START_USER_DATA_COLUMN + i) for i in range(self.num_columns)]
 
         # RID
-        self.prev_rid += 1
+        with self.rid_latch:
+            self.prev_rid += 1
+            
         rid = self.prev_rid
         rid_in_bytes = int_to_bytes(rid)
         num_records_in_page = rid_page.write(rid_in_bytes)
@@ -289,7 +293,6 @@ class Table:
         num_records_in_page = indirection_page.write(prev_update_rid_bytes)
         ind_cell_idx = num_records_in_page - 1
         indirection_pid[0] = ind_cell_idx
-        
 
         _,_,page_range_idx = base_record.columns[RID_COLUMN]
         page_range = self.page_ranges[page_range_idx] # type: PageRange
@@ -297,7 +300,10 @@ class Table:
         rid_pid = [None, rid_inner_idx, page_range_idx]
         self.bp.add_page(rid_pid,rid_page)
         # write rid
-        self.prev_tid -= 1
+
+        with self.tid_latch:
+            self.prev_tid -= 1
+
         new_rid = self.prev_tid
         rid_in_bytes = int_to_bytes(new_rid)
         num_records_in_page = rid_page.write(rid_in_bytes)

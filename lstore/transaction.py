@@ -1,5 +1,10 @@
-from template.table import Table, Record
-from template.index import Index
+from table import Table, Record
+from index import Index
+import time
+import threading
+import util
+
+gathering_lock = threading.Lock()
 
 class Transaction:
 
@@ -8,7 +13,7 @@ class Transaction:
     """
     def __init__(self):
         self.queries = []
-        pass
+        self.timestamp = time.time()
 
     """
     # Adds the given query to this transaction
@@ -18,6 +23,10 @@ class Transaction:
     # t.add_query(q.update, 0, *[None, 1, None, 2, None])
     """
     def add_query(self, query, *args):
+        with gathering_lock:
+            # gather the locks
+            pass
+
         self.queries.append((query, args))
 
     # If you choose to implement this differently this method must still return True if transaction commits or False on abort
@@ -28,7 +37,7 @@ class Transaction:
             if result == False:
                 return self.abort()
         return self.commit()
-
+    
     def abort(self):
         #TODO: do roll-back and any other necessary operations
         return False

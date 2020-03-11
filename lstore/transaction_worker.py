@@ -1,7 +1,13 @@
-from template.table import Table, Record
-from template.index import Index
+from table import Table, Record
+from index import Index
+import threading
 
 class TransactionWorker:
+
+    all_queued_transactions = []
+    queued_lock = threading.Lock()
+    in_progress_transactions = []
+    ip_lock = threading.Lock()
 
     """
     # Creates a transaction worker object.
