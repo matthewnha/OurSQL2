@@ -57,7 +57,7 @@ def test1():
 
     db = Database()
     db.open('~/ECS165')
-    grades_table = db.tables["Grades"]
+    grades_table = db.get_table("Grades")
     query = Query(grades_table)
 
 
@@ -92,12 +92,13 @@ def test1():
 
     db = Database()
     db.open('~/ECS165')
-    grades_table = db.tables["Grades"]
+    grades_table = db.get_table("Grades")
     query = Query(grades_table)
 
     success = 0
     for key in keys:
-        result = query.select(key, [1,1,1,1,1])[0].columns
+        rows = query.select(key, 0, [1,1,1,1,1])
+        result = rows[0].columns
         if result != expected[key]:
             raise Exception("Didn't match ):")
         else:

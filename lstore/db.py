@@ -45,4 +45,3 @@ class Database():
     def get_table(self, name):
         print(self.tables[name].name)
         return self.my_manager.import_table(self.tables[name])
-        pass

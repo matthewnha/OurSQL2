@@ -133,5 +133,5 @@ a = lm.get("a")
 b = lm.get("b")
 c = lm.get("c")
 
-results = util.acquire_all([a.x_lock, b.x_lock, c.x_lock])
+results = util.acquire_all([a.s_lock, a.x_lock, b.x_lock, c.x_lock])
 print(results)

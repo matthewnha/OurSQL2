@@ -29,7 +29,15 @@ class XLock:
         if curr_thread == self.owner:
             return True
 
-        if self.owner != None or self.resource.get_shared_count() > 0:
+        shared_count = self.resource.get_shared_count()
+
+        if shared_count > 1:
+            return False
+
+        if shared_count == 1 and not self.resource.is_s_locked_by_curr():
+            return False
+
+        if self.owner != None:
             return False
 
         self.owner = curr_thread
@@ -76,7 +84,7 @@ class SLock:
             return True
 
         x_owner = self.resource.get_x_owner()
-        if x_owner == None and x_owner != curr_thread:
+        if x_owner is not None and x_owner != curr_thread:
             return False
 
         self.owners.append(curr_thread)
@@ -99,6 +107,10 @@ class SLock:
     def get_count(self):
         return len(self.owners)
 
+    @with_protection
+    def is_owned_by_curr(self):
+        curr_thread = threading.currentThread()
+        return curr_thread in self.owners
 
 class Resource:
     def __init__(self, id):
@@ -114,6 +126,9 @@ class Resource:
 
     def get_x_owner(self):
         return self.x_lock.get_owner()
+
+    def is_s_locked_by_curr(self):
+        return self.s_lock.is_owned_by_curr()
 
 class LockManager:
     def __init__(self):

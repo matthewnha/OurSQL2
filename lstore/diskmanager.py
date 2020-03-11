@@ -271,7 +271,7 @@ class DiskManager:
 
             metarecord = MetaRecord(rid,key,columns)
 
-            if(not tail_flag):
+            if not tail_flag:
                 table.key_index[key] = rid
             
             if rid == 0: # Was deleted
