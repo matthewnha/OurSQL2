@@ -61,8 +61,8 @@ class Table:
 
         self.bp = BufferPool(self, disk)
         self.key_index = {} # key -> base MetaRecord PID # Don't export
-        self.index = Index(self) # Don't export
-        self.index.create_index(self.key_col)
+        self.indices = Index(self) # Don't export
+        self.indices.create_index(key_col)
 
         self.merging = 0
         self.updates_since_merge = 0
@@ -93,6 +93,14 @@ class Table:
             merge = threading.Thread(target=start_merge, args=())
             merge.start()
             self.updates_since_merge = 0
+
+    def create_index(self, column_idx):
+        self.indices.create_index(column_idx)
+    
+    def drop_index(self, column_idx):
+        self.indices.drop_index(column_idx)
+    
+
 
     def get_page(self, pid): # type: Page
         # cell_idx, page_idx, page_range_idx = pid
@@ -225,16 +233,19 @@ class Table:
             bytes_to_write = int_to_bytes(columns_data[i])
             col_page.write(bytes_to_write)
 
+            if self.indices.is_indexed(i):
+                self.index.insert(columns_data[i], rid, i)
+
         sys_cols = [indirection_pid, rid_pid, time_pid, schema_pid]
         data_cols = [pid for pid, _ in column_pids_and_pages]
         record = MetaRecord(rid, key, sys_cols + data_cols)
         self.page_directory[rid] = record
         self._rw_locks[rid] = threading.Lock()
         self._del_locks[rid] = threading.Lock()
-        # self.key_index[key] = rid
-        self.index.insert(key, rid, self.key_col)
-        self.num_rows += 1
 
+        self.key_index[key] = rid
+        # self.index.insert(key, rid, self.key_col)
+        self.num_rows += 1
         return True
 
     def update_row(self, key, update_data):
@@ -342,6 +353,7 @@ class Table:
         # Data Columns
         data_columns = []
         tail_schema_encoding_binary = bin(tail_schema_encoding)[2:].zfill(self.num_columns)
+
         for i, pid in enumerate(update_data):
             if '0' == tail_schema_encoding_binary[i]:
                 data_columns.append(None)
@@ -381,6 +393,14 @@ class Table:
         new_base_enc = base_schema_enc_int | tail_schema_encoding
         bytes_to_write = int_to_bytes(new_base_enc)
         base_enc_page.write_to_cell(bytes_to_write, base_enc_cell_idx)
+
+        
+        # for i in range(len(update_data)):
+        #     if '0' == tail_schema_encoding_binary[i]:
+        #         continue
+        #     elif self.indices.is_indexed(i):
+        #         self.indices.remove(i,)
+        #         self.indices.insert(update_data[i],base_rid,i)
         
         release_all(locks)
 

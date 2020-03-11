@@ -3,18 +3,40 @@ from random import choice, randint, sample, seed
 
 class Node():
     
-    def __init__(self, nodeObjects):
-        self.nodeObjects = nodeObjects
-        self.isLeaf = True
+    def __init__(self, max_node_size):
+        self.max_node_size = max_node_size
+        self.is_leaf = True
+        self.left = None
+        self.right = None
         self.keys = []
         self.rids = []
+        
     @property
-    def isLeaf(self):
-        return self.__isLeaf
+    def is_leaf(self):
+        return self.__is_leaf
 
-    @isLeaf.setter
-    def isLeaf(self, is_Leaf):
-        self.__isLeaf = is_Leaf
+    @is_leaf.setter
+    def is_leaf(self, is_Leaf):
+        if not is_Leaf:
+            self.left = None
+            self.right = None
+        self.__is_leaf = is_Leaf
+
+    @property
+    def left(self):
+        return self.__left
+
+    @left.setter
+    def left(self, left):
+        self.__left = left
+
+    @property
+    def right(self):
+        return self.__right
+
+    @right.setter
+    def right(self, right):
+        self.__right = right
 
     def add(self, key, rid):
         if not self.keys: #if keys is empty (root)
@@ -22,59 +44,98 @@ class Node():
             self.rids.append([rid])
             return None
         
+        if self.is_leaf:
+            if type(rid) != list:
+                rid = [rid]
+            
         for i, item in enumerate(self.keys): #check for existing key in node
             if key == item:
-                self.rids[i].append(rid) #if node exists add rid to rids[]
+                self.rids[i] += rid #if node exists add rid to rids[]
                 break
             elif key < item: #if key is beginning of node and key doesnt already exist
                 self.keys = self.keys[:i] + [key] + self.keys[i:] 
-                self.rids = self.rids[:i] + [[rid]] + self.rids[i:]
+                self.rids = self.rids[:i] + [rid] + self.rids[i:]
                 break
             elif i + 1 == len(self.keys): # check for end of node
                 self.keys.append(key) #add key to end of node
-                self.rids.append([rid])
+                self.rids.append(rid)
                 break
         
     
     def remove(self, key, rid):
-        # if self.isLeaf == True:
-        #     for i, item in enumerate(self.keys):
-        #         if key == item:
-        #             if rid == itemRID:
-        #                 print("found RID")
-        #                 del(self.rids[i][j]) #perform the delete
-        #             if len(self.rids[i]) == 0: #if key is empty, remove key
-        #                 del(self.keys[i])
-        #                 self.rids.remove([])
-        #                 #self.rids = self.rids[:i-1] + self.rids[i-1:]
-        #                 print("removed key")
-        #                 break
-        #             else:
-        #                 print("RID not found")
-        #     print("keys: ", self.keys[i])
-        #            # print("RID: ", self.rids[i][j])
+
+        for i, item in enumerate(self.keys):
+            if key == item:
+                for j, itemRID in enumerate(self.rids[i]):
+                    if rid == itemRID:
+                        del(self.rids[i][j]) #perform the delete
+
+                        if len(self.rids[i]) == 0: #if key is empty, remove key
+                            del(self.keys[i])
+                            self.rids.remove([]) 
+                        
+                        break
+                break
         pass      
-            
+
+    def update_keys(self):
+        if self.is_leaf:
+            print("HMMMMM")
+            return None
+        for i in range(1,len(self.rids)):
+            if i > len(self.keys):
+                self.keys.append(self.rids[i].keys[0])
+            else:
+                if self.keys[i-1] != self.rids[i].keys[0]:
+                    self.keys[i-1] = self.rids[i].keys[0]
+
     def split(self):
     #split and send to child nodes
         #left and right inherit number of objects
-        left = Node(self.nodeObjects) 
-        right = Node(self.nodeObjects)
-        mid = self.nodeObjects//2
+        left = Node(self.max_node_size) 
+        right = Node(self.max_node_size)
+        mid = (self.max_node_size + 1)//2
 
         left.keys = self.keys[:mid]
-        left.rids = self.rids[:mid]
-
         right.keys = self.keys[mid:]
-        right.rids = self.rids[mid:]
 
-        self.keys = [right.keys[0]]
+        if self.is_leaf == False:
+            left.is_leaf = False
+            right.is_leaf = False
+            if self.max_node_size % 2 == 0:
+                left.rids = self.rids[:mid +1]
+                right.rids = self.rids[mid + 1:]
+                self.keys = [right.keys.pop(0)]
+            else:
+                left.rids = self.rids[:mid]
+                right.rids = self.rids[mid:]
+                self.keys = [left.keys[-1]]
+
+                
+        else:
+            left.rids = self.rids[:mid]
+            right.rids = self.rids[mid:]
+            self.keys = [right.keys[0]]
+
+            left.right = right
+            left.left = self.left
+
+            right.left = left
+            right.right = self.right
+
+            if self.left != None:
+                self.left.right = left
+
+            if self.right != None:
+                self.right.left = right
+            
+
+
         self.rids = [left, right]
+        self.is_leaf = False
 
-        self.isLeaf = False
-
-    def isFull(self):
-        return len(self.keys) == self.nodeObjects + 1
+    def is_full(self):
+        return len(self.keys) == self.max_node_size + 1
 
     def key_helper(self, bool, ret=""):
         if bool:
@@ -89,9 +150,9 @@ class Node():
             else:
                 ret += "`--"
         
-        ret += str(self.keys[::-1]) + "\n"
+        ret += str(self.keys) + "\n"
 
-        if not self.isLeaf:
+        if not self.is_leaf:
 
             for val in self.rids:
 
@@ -108,33 +169,41 @@ class Node():
         return ret
 
 
-    def getKeys(self):
+    def get_keys(self):
         bool = []
         to_print = self.key_helper(bool)
         return to_print
             
 
-
-
 class BPlusTree(object):
-    def __init__(self, nodeObjects = 4):
-        self.root = Node(nodeObjects)
+
+    def __init__(self, max_node_size = 4):
+        self.root = Node(max_node_size)
+        self.left = self.root
+        self.right = self.root
 
     def _find(self, node, key): #return index of key and its rids
+        
         for i, item in enumerate(node.keys):
             if key < item:
                 return node.rids[i], i
                 
-        #if i < len(node.keys) - 1:
-        return node.rids[i+1], i+1
-        #else:
-          #  return node.rids[i], i
+        if i < len(node.rids) - 1:
+            return node.rids[i+1], i+1
+        else:
+            return None, i
 
 
     def find(self, node, key): #return index of key and its rids
         return self._find(node, key)
 
-    def _merge(self, parent, child, index):
+    def _merge(self, parents, child):
+
+        if parents:
+            parent, index = parents.pop()
+        else:
+            return None
+
         parent.rids.pop(index)
         pivot = child.keys[0]
         
@@ -144,6 +213,7 @@ class BPlusTree(object):
                 parent.keys = parent.keys[:i] + [pivot] + parent.keys[i:]
                 left = parent.rids[:i]
                 right = parent.rids[i:]
+
                 for rid in child.rids: 
                     left.append(rid)
                 parent.rids = left + right
@@ -152,182 +222,286 @@ class BPlusTree(object):
             elif i+1 == len(parent.keys):
 
                 parent.keys.append(pivot)
+
                 for rid in child.rids:
                     parent.rids.append(rid)
                 break
-# for i, item in enumerate(self.keys): #check for existing key in node
-#             
-#             elif key < item: #if key is beginning of node and key doesnt already exist
-#                 self.keys = self.keys[:i] + [key] + self.keys[i:] 
-#                 self.rids = self.rids[:i] + [[rid]] + self.rids[i:]
-#                 break
-#             elif i + 1 == len(self.keys): # check for end of node
-#                 self.keys.append(key) #add key to end of node
-#                 self.rids.append([rid])
-#                 break
         
+        if parent.is_full():
+
+            parent.split()
+            if parents and not parents[-1][0].is_full():
+                # print("At merge")
+                self._merge(parents, parent)
+
+         
         
     def insert(self, key, rid):
+
         child = self.root
-        parent = None
-        while not child.isLeaf:
-            parent = child
-            child, index = self._find(child,key)
-
-        child.add(key, rid)
-        # print("test")
-        if child.isFull():
-            child.split()
-            # print("split happened")
-            if parent and not parent.isFull():
-                # print("At merge")
-                self._merge(parent, child, index)
-
-
-    def remove(self, key, rid):
-        parents = []
         prev_node = self.root
-        child = self.root
+        parents = []
 
-        while not child.isLeaf:
+        while not child == None and not child.is_leaf:
 
             child, index = self._find(child, key)
             parents.append((prev_node, index))
             prev_node = child
 
-        for i, item in enumerate(child.keys):
-            if key == item:
-                for j, itemRID in enumerate(child.rids[i]):
-                    if rid == itemRID:
-                        # print("found RID")
-                        del(child.rids[i][j]) #perform the delete
-                    if len(child.rids[i]) == 0: #if key is empty, remove key
-                        del(child.keys[i])
-                        child.rids.remove([])
-                        if(len(child.keys) < child.nodeObjects/2):
-                            self._balance(parents, child)
-                        #self.rids = self.rids[:i-1] + self.rids[i-1:]
-                    # print("removed key")
-                    break
-                else:
-                    return None
-                    # print("RID: ", child.rids[i][j])
+        if child == None:
+            parent = parents[-1][0]
+            child = Node(parent.max_node_size)
+            child.add(key,rid)
+            parent.rids.append(child)
+        else:
+            child.add(key, rid)
+
+        if child.is_full():
+
+            child.split()
+
+            if self.root == child:
+                self.left = child.rids[0]
+                self.right = child.rids[1]
+            elif self.right == child:
+                self.right = child.rids[1]
+            elif self.left == child:
+                self.left = child.rids[0]
+
+            if parents and not parents[-1][0].is_full():
+                self._merge(parents, child)
+
+
+
+    def remove(self, key, rid):
+
+        parents = []
+        prev_node = self.root
+        child = self.root
+
+        while not child == None and not child.is_leaf:
+            child, index = self._find(child, key)
+            parents.append((prev_node, index))
+            prev_node = child
+
+        if child != None:
+            child.remove(key,rid)
+            
+            if(len(child.keys) < child.max_node_size/2):
+                self._balance(parents, child)
+
+        return None
 
     def _balance(self, parents, child):
 
         if parents:
             parent, index = parents.pop()
         else:
+            print("EHHHHHHH")
             return None
 
         sibling_index = index
         to_the_left = False
-        if index < len(parent.keys)-1:
-            sibling_index += 1
-        else:
+
+        if index == len(parent.keys):
+            index += -1
             sibling_index += -1
             to_the_left = True
+        else:
+            if parent.max_node_size % 2 == 0:
+                sibling_index += 1
+            elif len(parent.keys) == len(parent.rids) and index == len(parent.keys) - 1:
+                index += -1
+                sibling_index += -1
+                to_the_left = True
+            else:
+                sibling_index += 1
+                
         
         sibling = parent.rids[sibling_index]
-        
-        if len(sibling.keys) <= sibling.nodeObjects/2 + 1:
-            for i, key in enumerate(sibling.keys):
-                child.add(key, sibling.keys.pop(i))
 
-            if to_the_left:
-                del parent.keys[sibling_index]
-            else:
-                del parent.keys[index]
+        is_Leafs = False
+        if sibling.is_leaf and child.is_leaf:
+            is_Leafs = True
 
-            del parent.rids[sibling_index]
-            del sibling
+        flags = (to_the_left,is_Leafs)
+        indexes = (index, sibling_index)
 
-            if len(parent.keys) < parent.nodeObjects//2:
+        if len(sibling.keys) <= (sibling.max_node_size + 1)/2:
+            self.consolidate(indexes, child, sibling, parent, flags)
+
+            if parent != self.root and len(parent.keys) < parent.max_node_size/2 :
                 self._balance(parents, parent)
-        else: 
-            i = 0
-            while i < len(sibling.keys) and len(child.keys) < child.nodeObjects/2:
+            elif parent == self.root and not parent.keys:
+                if not parent.keys:
+                    self.root = parent.rids[0]
 
-                current_key = sibling.keys.pop(i)
-                child.add(current_key, sibling.rids.pop(i))
+        else:
+            self.share(indexes, child, sibling, parent, flags)
+    
+    def consolidate(self, indexes, child, sibling, parent, flags):
+        index, sibling_index = indexes
+        to_the_left, is_Leafs = flags
+
+        while sibling.keys or sibling.rids:
+            if is_Leafs:
+                if len(sibling.rids[0]) == 1:
+                    child.add(sibling.keys.pop(0), sibling.rids.pop(0)[0])
+                else:
+                    child.add(sibling.keys.pop(0), sibling.rids.pop(0))
+            else:
+                if sibling.keys:
+                    child.add(sibling.keys.pop(0), sibling.rids.pop(0))
+                else:
+                    if to_the_left:
+                        child.rids.insert(i,sibling.rids.pop(0))
+                    else:
+                        child.rids.append(sibling.rids.pop(0))
+
+        if not child.is_leaf and child.rids[0].is_leaf:
+            child.update_keys()
+        
+        if is_Leafs:
+            if to_the_left:
+                child.left = sibling.left
+                if sibling == self.left:
+                    self.left = child.left
+
+            else:
+                child.right = sibling.right
+                if sibling == self.right:
+                    self.right = child.right
+
+        del parent.rids[sibling_index]
+
+        if to_the_left:
+            del parent.keys[sibling_index]
+        else:
+            del parent.keys[index]
+
+        if parent.rids[0].is_leaf:
+            parent.update_keys()
+
+    def share(self, indexes, child, sibling, parent, flags):
+        index, sibling_index = indexes
+        to_the_left, is_Leafs = flags
+
+        while len(sibling.keys) > child.max_node_size/2 and len(child.keys) < child.max_node_size/2:
+            if to_the_left:
+                current_key = sibling.keys.pop()
+                
+                if is_Leafs:
+                    if len(sibling.rids[-1]) == 1:
+                        child.add(current_key, sibling.rids.pop()[0])
+                    else:
+                        child.add(current_key, sibling.rids.pop())
+                else:
+                    child.add(current_key, sibling.rids.pop())
+            else:
+                current_key = sibling.keys.pop(0)
+                if is_Leafs:
+                    if len(sibling.rids[0]) == 1:
+                        child.add(current_key, sibling.rids.pop(0)[0])
+                    else:
+                        child.add(current_key, sibling.rids.pop(0))
+                else:
+                    child.add(current_key, sibling.rids.pop(0))
+
+        if parent.rids[0].is_leaf:
+            parent.update_keys()
+        else:
+            if to_the_left:
+                parent.keys[index] = child.keys[0]
+            else:
+                parent.keys[index] = child.keys[-1]
+
+        if not child.is_leaf and child.rids[0].is_leaf:
+            child.update_keys()
+
+    def bulk_search(self, start, end):
+
+        current_node = self.root
+        while not current_node == None and not current_node.is_leaf:
+            current_node, index = self._find(current_node, start)
+        
+        rids_to_return = []
+        # sum = 0
+        current_key = start
+        
+        while current_key <= end and current_node != None:
+
+            for i, key in enumerate(current_node.keys):
+
+                if key >= current_key and key <= end:
+                    current_key = key
+
+                    rids_to_return += current_node.rids[i]
             
-            parent.keys[index] = current_key            
+            current_node = current_node.right
+                    
+        return rids_to_return
 
+    def sum_range(self, start, end):
+        current_node = self.root
+        while not current_node == None and not current_node.is_leaf:
+            current_node, index = self._find(current_node, start)
+        
+        sum = 0
+        # sum = 0
+        current_key = start
+        
+        while current_key <= end and current_node != None:
 
-    def getRID(self, key):
+            for i, key in enumerate(current_node.keys):
+
+                if key >= current_key and key <= end:
+                    current_key = key
+
+                    for rid in current_node.rids:
+                        sum += current_key
+            
+            current_node = current_node.right
+                    
+        return sum
+        
+    def get_all_leaves(self):
+
+        current_node = self.left
+        return_data = [self.root.keys]
+
+        while current_node != None:
+            return_data.append((current_node.keys,current_node.rids))
+            print(current_node.keys,"next")
+            current_node = current_node.right
+
+        return return_data
+
+    def get_rid(self, key):
         child = self.root
-        while not child.isLeaf:
+
+        while not child == None and not child.is_leaf:
             child, index = self._find(child, key)
 
-        for i, item in enumerate(child.keys):
-            if key == item:
-                return child.rids[i]
+        if child != None:
+            for i, item in enumerate(child.keys):
+                if key == item:
+                    return child.rids[i]
 
         return None
     
 
-    def getKeys(self):
-        return self.root.getKeys()
-
-
-def demo_node():
-    print("Creating node")
-    node = Node(12)
-    print("number of objects in nodes: ", node.nodeObjects)
-    print("Add key a")
-    node.add('a', 'alpha')
-
-
-    print("check if node is full")
-    node.isFull()
-    node.getKeys()
-
-    print("Adding keys b c d")
-    node.add('b', 'bravo')
-    node.add('c', 'charlie')
-    node.add('d', 'delta')
-    
-    print("Check if node is full")
-    #node.isFull()
-    node.getKeys()
-    print(node.isFull())
-    #print(len(node.keys))
-   # if (len(node.keys) >= 2):
-    #    print("node full")
-
-# def demo_tree():
-#     print("Create tree")
-
-#     bplustree = BPlustTree(4)
-#     print("add one item to tree")
-#     bplustree.insert('a', 'alpha')
-#     bplustree.getKeys()
-#     bplustree.insert('b', 'bravo')
-#     bplustree.insert('c', 'charlie')
-#     bplustree.insert('d', 'delta')
-#     bplustree.getKeys()
-
-#     bplustree.insert('e', 'echo')
-#     bplustree.getKeys()
-#     print(bplustree.getRID('e'))
-
-#     bplustree.insert('f', 'foxtrot')
-#     bplustree.insert('g', 'golf')
-#     bplustree.insert('h', 'hotel')
-#     bplustree.getKeys()
-
-#     bplustree.insert('h', 'honey')
-#     bplustree.getKeys()
-#     print(bplustree.getRID('h'))
+    def get_keys(self):
+        return self.root.get_keys()
 
 
 def demo_treeNum():
-    seed(12345)
-    bplustree = BPlustTree(4)
+    seed(123245)
+    max_keys = int(input("\n Input max keys:"))
+    bplustree = BPlusTree(max_keys)
     print("Start demo")
     keys = []
 
-    for i in range(16):
+    for i in range(100):
         key = randint(0, 9000)
         while key in keys:
             key = randint(0, 9000)
@@ -336,15 +510,15 @@ def demo_treeNum():
         print(key, "Inserted at", i)
         keys.append((key,i))
 
-    print(bplustree.getKeys())
+    print(bplustree.get_keys())
 
-    deleted_keys = sample(keys, 2)
+    # deleted_keys = sample(keys, 2)
     
-    for key in deleted_keys:
-        print(key)
-        bplustree.remove(key[0],key[1])
+    # for key in deleted_keys:
+    #     print(key)
+    #     bplustree.remove(key[0],key[1])
     
-    print(bplustree.getKeys())
+    # print(bplustree.get_keys())
 
     while True:
 
@@ -380,7 +554,7 @@ def demo_treeNum():
                     insertvalue = input("Enter key as interger: ")
                     insertRID = input("Enter RID as interger: ")
             bplustree.remove(insertvalue, insertRID)
-            print(bplustree.getRID(insertvalue))
+            print(bplustree.get_rid(insertvalue))
 
         elif command == 'find':
             readRID = input("Enter key value to display RIDs: ")
@@ -390,10 +564,10 @@ def demo_treeNum():
                     break
                 except ValueError:
                     readRID = input("Enter key value as integar to display RIDs: ")
-            print(bplustree.getRID(readRID))
+            print(bplustree.get_rid(readRID))
         
         elif command == 'keys':
-            print(bplustree.getKeys())
+            print(bplustree.get_keys())
         
         else:
             print("Not valid input")
@@ -408,48 +582,62 @@ def demo_tree():
     print("Start demo")
     keys = []
 
-    for i in range(100):
+    for i in range(450):
         key = randint(0, 9000)
-        while key in keys:
-            key = randint(0, 9000)
 
         bplustree.insert(key,i)
-        print(key, "Inserted at", i)
+        # print(key, "Inserted at", i)
         keys.append((key,i))
-
-    print(bplustree.getKeys())
+    # print(keys)
+    print(bplustree.get_keys())
 
     for key in keys:
-        rid = bplustree.getRID(key[0])
+        rid = bplustree.get_rid(key[0])
 
-        if rid[0] == key[1]:
-            print("Successful find")
+        if key[1] in rid:
+            pass
+            # print("Successful find")
         else:
-            print("Error of key", key[0],"Rid is",key[1],"should be",rid[0])  
+            print("Error of key", key[0],"Rid is",key[1],"should be",rid)  
 
 
-    deleted_keys = sample(keys, 10)
-    for key in deleted_keys:
+    deleted_keys = sample(keys, 100)
+    for i, key in enumerate(deleted_keys):
         print(key)
+        # if (i > 35 and i < 40):
+        #     print(bplustree.get_keys())
+
         bplustree.remove(key[0],key[1])
+        # if (i > 35 and i < 40):
+        #     print(bplustree.get_keys())
     
-    print(bplustree.getKeys())
+    # print(bplustree.get_keys())
 
     for key in keys:
-        rid = bplustree.getRID(key[0])
+        rid = bplustree.get_rid(key[0])
         if rid == None:
             if key in deleted_keys:
-            
                 print("Key successful deleted")
-        elif rid[0] == key[1]:
-            print("Successful find")
+            else: 
+                print("Key should be here", key)
+        elif key in deleted_keys:
+            if key[1] in rid: 
+                print("Key should be deleted", key)
+                print(bplustree.get_keys())
+            else:
+                print("Key successful deleted one rid")
+            # print("Successful find")
         else:
-            print("Error of key", key[0],"Rid is",rid,"should be",key[1])  
+            if key[1] in rid:
+                pass
+            else:
+                print("Error of key", key[0],"Rid is",rid,"should be",key[1])  
+                # print(deleted_keys)
 
 if __name__ == "__main__":
    # demo_node()
-    demo_tree()
-    #demo_treeNum()
+    #demo_tree()
+    demo_treeNum()
 
 
 
