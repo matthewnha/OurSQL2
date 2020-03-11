@@ -21,21 +21,31 @@ class Index:
         if tree is None:
             raise Exception("This column is not indexed")
 
-        return tree.getRID(value)
+        return tree.get_rid(value)
 
     """
     # Returns the RIDs of all records with values in column "column" between "begin" and "end"
     """
 
+    def is_indexed(self, column):
+        return not (self.indices[column] == None)
+
     def locate_range(self, begin, end, column):
-        tree = self.indices[column]
+        tree = self.indices[column_idx]
+        if tree is None:
+            raise Exception("This column is not indexed")
         return tree.bulk_search(begin,end)
+
+    def sum_range(self, begin, end, column):
+        tree = self.indices[column_idx]
+        if tree is None:
+            raise Exception("This column is not indexed")
+        return tree.sum_range(begin, end, column)
 
     def insert(self, val, rid, column_idx):
         tree = self.indices[column_idx]
         if tree is None:
             raise Exception("This column is not indexed")
-
         tree.insert(val, rid)
 
     def remove(self, column_idx, key, rid):
@@ -45,6 +55,15 @@ class Index:
             raise Exception("This column is not indexed")
 
         tree.remove(key, rid)
+
+    def update_index(self, column_idx, key, new_key, rid):
+        tree = self.indices[column_idx]
+
+        if tree is None:
+            raise Exception("This column is not indexed")
+
+        tree.remove(key,rid)
+        tree.insert(new_key,rid)
 
     """
     # optional: Create index on specific column

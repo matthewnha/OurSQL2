@@ -441,6 +441,29 @@ class BPlusTree(object):
                     
         return rids_to_return
 
+    def sum_range(self, start, end):
+        current_node = self.root
+        while not current_node == None and not current_node.is_leaf:
+            current_node, index = self._find(current_node, start)
+        
+        sum = 0
+        # sum = 0
+        current_key = start
+        
+        while current_key <= end and current_node != None:
+
+            for i, key in enumerate(current_node.keys):
+
+                if key >= current_key and key <= end:
+                    current_key = key
+
+                    for rid in current_node.rids:
+                        sum += current_key
+            
+            current_node = current_node.right
+                    
+        return sum
+        
     def get_all_leaves(self):
 
         current_node = self.left
