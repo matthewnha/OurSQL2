@@ -23,7 +23,7 @@ def test1():
     keys = []
 
     db = Database()
-    db.open('~/BP_test')
+    db.open('~/ECS165')
     grades_table = db.create_table('Grades', 5, 0)
     query = Query(grades_table)
 
@@ -54,14 +54,11 @@ def test1():
 
 
     db.close()
-    del db
-    del grades_table
-    del query
 
-    imported_db = Database()
-    imported_db.open('~/BP_test')
-    imported_grades_table = imported_db.get_table('Grades')
-    query = Query(imported_grades_table)
+    db = Database()
+    db.open('~/ECS165')
+    grades_table = db.tables["Grades"]
+    query = Query(grades_table)
 
 
     # Measuring Insert Performance
@@ -91,15 +88,11 @@ def test1():
         expected[key][col] = val
 
 
-
-    imported_db.close()
-    del imported_db
-    del imported_grades_table
-    del query
+    db.close()
 
     db = Database()
-    db.open('~/BP_test')
-    grades_table = db.get_table("Grades")
+    db.open('~/ECS165')
+    grades_table = db.tables["Grades"]
     query = Query(grades_table)
 
     success = 0
@@ -113,11 +106,8 @@ def test1():
     print(success,'/',len(keys),' were read successfully :)')
 
 def test2():
-    success = 0
-    count = 0
-
     db = Database()
-    db.open('~/BP_test')
+    db.open('~/ECS165')
 
     grades_table = db.create_table('Grades', 5, 0)
     query = Query(grades_table)
@@ -149,41 +139,36 @@ def test2():
 
         query.update(key, *data)
         expected[key][col] = val
-        # print('{0:>20} : {1:<10}'.format('EXPECTED', str(expected)))
+        print('{0:>20} : {1:<10}'.format('EXPECTED', str(expected[key])))
 
         actual = query.select(key, [1,1,1,1,1])[0].columns
-        # print('{0:>20} : {1:<10}'.format('SEL MERGE', str(actual)))
-
-        count += 1
+        print('{0:>20} : {1:<10}'.format('SEL MERGE', str(actual)))
         if expected[key] != actual:
-            raise Exception('Mismatch')
-        else:
-            success += 1
+            raise Exception('shit')
 
     db.close()
 
-    del db
-    del query
-    del grades_table
+    print('Closed first time, opening')
 
-    imported_db = Database()
-    imported_db.open('~/BP_test')
+    db = Database()
+    db.open('~/ECS165')
 
-    imported_grades_table = imported_db.get_table("Grades")
-    imported_query = Query(imported_grades_table)
+    grades_table = db.tables["Grades"]
+    query = Query(grades_table)
 
-    print('START FIRST SELECT')
+    print('START SECOND SELECT')
 
     insert_time_0 = process_time()
     for i in range(10000, 20000):
         data = [i, i*10, i*20, i*30, i*40]
-        imported_query.insert(*data)
+        query.insert(*data)
 
         keys.append(i)
         expected[i] = data
     insert_time_1 = process_time()
 
     for i in range(1000):
+
         # update
         col = randint(0, 4)
         val = randint(0, 100)
@@ -192,25 +177,79 @@ def test2():
         data[col] = val
         key = choice(keys)
 
-        imported_query.update(key, *data)
+        query.update(key, *data)
         expected[key][col] = val
-        # print('{0:>20} : {1:<10}'.format('EXPECTED', str(expected)))
+        print('{0:>20} : {1:<10}'.format('EXPECTED', str(expected[key])))
 
-        actual = imported_query.select(key, [1,1,1,1,1])[0].columns
-        # print('{0:>20} : {1:<10}'.format('SEL MERGE', str(actual)))
-
-        count += 1
+        actual = query.select(key, [1,1,1,1,1])[0].columns
+        print('{0:>20} : {1:<10}'.format('SEL MERGE', str(actual)))
         if expected[key] != actual:
             raise Exception('shit')
-        else:
-            success += 1
 
-    imported_db.close()
-    print('{0:}/{1:} Successes'.format(success, count))
+    db.close()
+
     # [1, 100, 88, 7, 200]
 
-print('Test 1')
 test1()
-print('Test 2')
-test2()
-# print('Done tests')
+
+# select_times_before = []
+# agg_times_before = []
+
+# for _ in range(3):
+#     print('')
+#     # Measuring Select Performance
+#     select_time_0 = process_time()
+#     for i in range(0, 10000):
+#         query.select(choice(keys), [1, 1, 1, 1, 1])
+#     select_time_1 = process_time()
+#     elapsed = select_time_1 - select_time_0
+#     select_times_before.append(elapsed)
+#     print("Selecting 10k records took:  \t\t\t", select_time_1 - select_time_0)
+
+#     # Measuring Aggregate Performance
+#     agg_time_0 = process_time()
+#     for i in range(0, 10000, 100):
+#         result = query.sum(906659671+i, 906659671+100, randrange(0, 5))
+#     agg_time_1 = process_time()
+#     elapsed = agg_time_1 - agg_time_0
+#     agg_times_before.append(elapsed)
+#     print("Aggregate 10k of 100 record batch took:\t", agg_time_1 - agg_time_0)
+#     print('')
+
+# select_times_after = []
+# agg_times_after = []
+
+# for _ in range(3):
+#     print('')
+#     # Measuring Select Performance
+#     select_time_0 = process_time()
+#     for i in range(0, 10000):
+#         query.select(choice(keys), [1, 1, 1, 1, 1])
+#     select_time_1 = process_time()
+#     elapsed = select_time_1 - select_time_0
+#     select_times_after.append(elapsed)
+#     print("Selecting 10k records took:  \t\t\t", elapsed)
+
+#     # Measuring Aggregate Performance
+#     agg_time_0 = process_time()
+#     for i in range(0, 10000, 100):
+#         result = query.sum(906659671+i, 906659671+100, randrange(0, 5))
+#     agg_time_1 = process_time()
+#     elapsed = agg_time_1 - agg_time_0
+#     agg_times_after.append(elapsed)
+#     print("Aggregate 10k of 100 record batch took:\t", elapsed)
+#     print('')
+
+# print('Mean select before', statistics.mean(select_times_before))
+# print('Mean select after', statistics.mean(select_times_after))
+# print('Mean aggr before', statistics.mean(agg_times_before))
+# print('Mean aggr after', statistics.mean(agg_times_after))
+
+# # Measuring Delete Performance
+# delete_time_0 = process_time()
+# for i in range(0, 10000):
+#     query.delete(906659671 + i)
+# delete_time_1 = process_time()
+# print("Deleting 10k records took:  \t\t\t", delete_time_1 - delete_time_0)
+
+# stop = True

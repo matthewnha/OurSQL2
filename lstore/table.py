@@ -294,59 +294,62 @@ class Table:
 
         # Meta columns
 
+        indirection_pid = self.write_tail_column(base_record, INDIRECTION_COLUMN, prev_update_rid_bytes)
         # Get tail pages for base_record.columns[INDIRECTION_COLUMN]
-        _,_,page_range_idx = base_record.columns[RID_COLUMN]
-        page_range = self.page_ranges[page_range_idx] # type: PageRange
-        ind_inner_idx, indirection_page = page_range.get_open_tail_page()
-        indirection_pid = [None, ind_inner_idx, page_range_idx]
-        self.bp.add_page(indirection_pid,indirection_page)
+        # _,_,page_range_idx = base_record.columns[RID_COLUMN]
+        # page_range = self.page_ranges[page_range_idx] # type: PageRange
+        # ind_inner_idx, indirection_page = page_range.get_open_tail_page()
+        # self.bp.add_page(indirection_pid,indirection_page)
 
-        # write indirection
-        num_records_in_page = indirection_page.write(prev_update_rid_bytes)
-        ind_cell_idx = num_records_in_page - 1
-        indirection_pid[0] = ind_cell_idx
-
-        _,_,page_range_idx = base_record.columns[RID_COLUMN]
-        page_range = self.page_ranges[page_range_idx] # type: PageRange
-        rid_inner_idx, rid_page = page_range.get_open_tail_page()
-        rid_pid = [None, rid_inner_idx, page_range_idx]
-        self.bp.add_page(rid_pid,rid_page)
-        # write rid
+        # # write indirection
+        # num_records_in_page = indirection_page.write(prev_update_rid_bytes)
+        # ind_cell_idx = num_records_in_page - 1
+        # indirection_pid[0] = ind_cell_idx
 
         with self.tid_latch:
             self.prev_tid -= 1
 
         new_rid = self.prev_tid
         rid_in_bytes = int_to_bytes(new_rid)
-        num_records_in_page = rid_page.write(rid_in_bytes)
-        rid_cell_idx = num_records_in_page - 1
-        rid_pid[0] = rid_cell_idx
-        
+        rid_pid = self.write_tail_column(base_record, RID_COLUMN, rid_in_bytes)
+        # _,_,page_range_idx = base_record.columns[RID_COLUMN]
+        # page_range = self.page_ranges[page_range_idx] # type: PageRange
+        # rid_inner_idx, rid_page = page_range.get_open_tail_page()
+        # rid_pid = [None, rid_inner_idx, page_range_idx]
+        # self.bp.add_page(rid_pid,rid_page)
+        # # write rid
 
-        _,_,page_range_idx = base_record.columns[TIMESTAMP_COLUMN]
-        page_range = self.page_ranges[page_range_idx] # type: PageRange
-        time_inner_idx, time_page = page_range.get_open_tail_page()
-        time_pid = [None, time_inner_idx, page_range_idx]
-        self.bp.add_page(time_pid,time_page)
-        # write Timestamp todo: all timestamps
+        # num_records_in_page = rid_page.write(rid_in_bytes)
+        # rid_cell_idx = num_records_in_page - 1
+        # rid_pid[0] = rid_cell_idx
+        
         millisec = int(round(time.time()*1000))
         bytes_to_write = int_to_bytes(millisec)
-        num_records_in_page = time_page.write(bytes_to_write)
-        time_cell_idx = num_records_in_page - 1
-        time_pid[0] = time_cell_idx
+        time_pid = self.write_tail_column(base_record, TIMESTAMP_COLUMN, bytes_to_write)
+
+        # _,_,page_range_idx = base_record.columns[TIMESTAMP_COLUMN]
+        # page_range = self.page_ranges[page_range_idx] # type: PageRange
+        # time_inner_idx, time_page = page_range.get_open_tail_page()
+        # time_pid = [None, time_inner_idx, page_range_idx]
+        # self.bp.add_page(time_pid,time_page)
+        # # write Timestamp todo: all timestamps
+        # num_records_in_page = time_page.write(bytes_to_write)
+        # time_cell_idx = num_records_in_page - 1
+        # time_pid[0] = time_cell_idx
         
-
-        _,_,page_range_idx = base_record.columns[SCHEMA_ENCODING_COLUMN]
-        page_range = self.page_ranges[page_range_idx] # type: PageRange
-        schema_inner_idx, schema_page = page_range.get_open_tail_page()
-        schema_pid = [None, schema_inner_idx, page_range_idx]
-        self.bp.add_page(schema_pid,schema_page)
-
-        # write encoding
         bytes_to_write = int_to_bytes(tail_schema_encoding)
-        num_records_in_page = schema_page.write(bytes_to_write)
-        schema_cell_idx = num_records_in_page - 1
-        schema_pid[0] = schema_cell_idx
+        schema_pid = self.write_tail_column(base_record, SCHEMA_ENCODING_COLUMN, bytes_to_write)
+
+        # _,_,page_range_idx = base_record.columns[SCHEMA_ENCODING_COLUMN]
+        # page_range = self.page_ranges[page_range_idx] # type: PageRange
+        # schema_inner_idx, schema_page = page_range.get_open_tail_page()
+        # schema_pid = [None, schema_inner_idx, page_range_idx]
+        # self.bp.add_page(schema_pid,schema_page)
+
+        # # write encoding
+        # num_records_in_page = schema_page.write(bytes_to_write)
+        # schema_cell_idx = num_records_in_page - 1
+        # schema_pid[0] = schema_cell_idx
         
 
         meta_columns = [indirection_pid, rid_pid, time_pid, schema_pid]
@@ -361,19 +364,21 @@ class Table:
                 continue
 
             col_idx = START_USER_DATA_COLUMN + i
-            _,_,page_range_idx = base_record.columns[col_idx]
-            page_range = self.page_ranges[page_range_idx] # type: PageRange
-
-            # Get/make open tail page from the respective og page range
-            inner_page_idx, tail_page = page_range.get_open_tail_page()
-
-            pid = [None, inner_page_idx, page_range_idx]
-            self.bp.add_page(pid, tail_page)
             bytes_to_write = int_to_bytes(update_data[i])
-            num_records = tail_page.write(bytes_to_write)
-            cell_idx = num_records - 1
+            pid = self.write_tail_column(base_record, bytes_to_write, col_idx)
+            
+            # _,_,page_range_idx = base_record.columns[col_idx]
+            # page_range = self.page_ranges[page_range_idx] # type: PageRange
 
-            pid[0] = cell_idx
+            # # Get/make open tail page from the respective og page range
+            # inner_page_idx, tail_page = page_range.get_open_tail_page()
+
+            # pid = [None, inner_page_idx, page_range_idx]
+            # self.bp.add_page(pid, tail_page)
+            # num_records = tail_page.write(bytes_to_write)
+            # cell_idx = num_records - 1
+
+            # pid[0] = cell_idx
             data_columns.append(pid)
 
         tail_record = MetaRecord(new_rid, key, meta_columns + data_columns)
@@ -403,6 +408,21 @@ class Table:
             self.schedule_merge()
 
         return True
+
+    def write_tail_column(self, base_record, column, data):
+
+        _,_,page_range_idx = base_record.columns[column]
+        page_range = self.page_ranges[page_range_idx] # type: PageRange
+        column_inner_idx, indirection_page = page_range.get_open_tail_page()
+        column_pid = [None, column_inner_idx, page_range_idx]
+        self.bp.add_page(column_pid,column_page)
+
+        # write indirection
+        num_records_in_page = column_page.write(data)
+        column_cell_idx = num_records_in_page - 1
+        column_pid[0] = column_cell_idx
+
+        return column_pid
 
     def update_indices(self, tail_schema, update_data, base_rid):
         for col in range(len(update_data)):
@@ -594,7 +614,7 @@ class Table:
                     new_tail_rid = int_from_bytes(new_tail_rid)
 
             # Release locks and return
-            for column self.indices.indices:
+            for column in self.indices.indices:
                 if self.indices.is_indexed(column):
                     self.indices.remove_by_rid(column, base_rid)
 

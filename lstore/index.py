@@ -68,7 +68,7 @@ class Index:
         key = self.locate_by_rid(rid , column)
 
         if key != None:
-            self.remove(key, rid, column)
+            self.remove(column, key, rid)
         
     def update_index(self, column, new_key, rid):
 
