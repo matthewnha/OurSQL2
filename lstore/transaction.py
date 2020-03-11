@@ -14,6 +14,7 @@ class Transaction:
     def __init__(self):
         self.queries = []
         self.timestamp = time.time()
+        self.locks = []
 
     """
     # Adds the given query to this transaction
@@ -23,10 +24,7 @@ class Transaction:
     # t.add_query(q.update, 0, *[None, 1, None, 2, None])
     """
     def add_query(self, query, *args):
-        with gathering_lock:
-            # gather the locks
-            pass
-
+        print('query name', query.__name__)
         self.queries.append((query, args))
 
     # If you choose to implement this differently this method must still return True if transaction commits or False on abort
