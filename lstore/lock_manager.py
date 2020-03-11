@@ -102,23 +102,35 @@ class Resource:
     def get_shared_count(self):
         return self.s_lock.get_count()
 
-def acquire_all(locks):
-    acquired = []
+class LockManager:
+    def __init__(self):
+        self.resources = {}
+        self.protection = threading.Lock()
 
-    for lock in locks:
-        is_acquired = lock.acquire(False)
+    @with_protection
+    def get(self, id):
+        if id not in self.resources:
+            self.resources[id] = Resource()
+        
+        return self.resources[id]
 
-        if not is_acquired:
-            for to_release in acquired:
-                to_release.release()
+# def acquire_all(locks):
+#     acquired = []
 
-            # print('Couldn\'t acquire all locks')
-            return False
+#     for lock in locks:
+#         is_acquired = lock.acquire(False)
 
-        acquired.insert(0, lock)
+#         if not is_acquired:
+#             for to_release in acquired:
+#                 to_release.release()
 
-    return acquired
+#             # print('Couldn\'t acquire all locks')
+#             return False
 
-def release_all(locks):
-    for lock in locks:
-        lock.release()
+#         acquired.insert(0, lock)
+
+#     return acquired
+
+# def release_all(locks):
+#     for lock in locks:
+#         lock.release()

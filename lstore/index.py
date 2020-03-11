@@ -86,14 +86,15 @@ class Index:
 
         self.indices[column_number] = BPlusTree(16)
 
-        table_keys = self.table.key_index.keys()
-        table_rids = self.table.key_index.values()
+        table_keys = list(self.table.key_index.keys())
+        table_rids = list(self.table.key_index.values())
 
         table_col = [None for a in range(self.table.num_columns)]
         table_col[column_number] = 1
 
         for i in range(len(self.table.key_index)):
-            value = self.table.select(table_keys[i],table_col)[0].column[column_number]
+            fetched = self.table.select(table_keys[i], self.table.key_col, table_col)[0]
+            value = fetched.columns[column_number]
             self.indices[column_number].insert(value,table_rids[i])
 
 

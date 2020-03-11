@@ -1,5 +1,5 @@
-from lstore.db import Database
-from lstore.query import Query
+from db import Database
+from query import Query
 
 from random import choice, randint, sample, seed
 
@@ -18,10 +18,15 @@ for i in range(0, 1000):
 keys = sorted(list(records.keys()))
 print("Insert finished")
 
-grades_table.index.create_index(1)
-grades_table.index.create_index(2)
-grades_table.index.create_index(3)
-grades_table.index.create_index(4)
+# grades_table.index.create_index(1)
+# grades_table.index.create_index(2)
+# grades_table.index.create_index(3)
+# grades_table.index.create_index(4)
+
+grades_table.indices.create_index(1)
+grades_table.indices.create_index(2)
+grades_table.indices.create_index(3)
+grades_table.indices.create_index(4)
 
 _records = [records[key] for key in keys]
 for c in range(grades_table.num_columns):

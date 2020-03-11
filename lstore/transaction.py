@@ -10,6 +10,9 @@ gathering_lock = threading.Lock()
 x_queries = ["insert", "update", "delete", "increment"]
 s_queries = ["select", "sum"]
 
+lm = LockManager()
+
+
 class Transaction:
 
     """
@@ -28,10 +31,12 @@ class Transaction:
     # t.add_query(q.update, 0, *[None, 1, None, 2, None])
     """
     def add_query(self, query, *args):
-        print('query name', query.__name__)
         query_name = query.__name__
 
-        r = Resource() # todo: get proper resource
+        if query_name == "sum":
+            raise Exception("Need to implement")
+
+        r = lm.get(args[0])
 
         if query_name in x_queries:
             self.locks.append(r.x_lock)

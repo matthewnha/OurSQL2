@@ -407,7 +407,7 @@ class Table:
             for rid in rids:
 
                 collapsed = self.collapse_row(rid, query_columns)
-                collasped[column] = key
+                collapsed[column] = key
                 record = Record(None, key, collapsed)
                 records.append(record)
             
