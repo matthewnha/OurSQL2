@@ -408,7 +408,7 @@ class Table:
         for col in range(len(update_data)):
             if '1' == tail_schema[col] and self.indices.is_indexed(col):
                 self.indices.update_index(base_rid, update_data[col], col)
-                
+
 
     def select(self, key, column, query_columns):
 
@@ -594,6 +594,10 @@ class Table:
                     new_tail_rid = int_from_bytes(new_tail_rid)
 
             # Release locks and return
+            for column self.indices.indices:
+                if self.indices.is_indexed(column):
+                    self.indices.remove_by_rid(column, base_rid)
+
             release_all(locks)
             return True
 
@@ -607,7 +611,9 @@ class Table:
         query_columns [aggregate_column_index] = 1
 
         sum = 0
-
+            
+        # if aggregate_colemn_index == self.key_col or not self.indices.is_indexed(aggregate_column_index):
+            
         if start_range <= end_range:
             curr_key = start_range
             end = end_range
@@ -625,9 +631,12 @@ class Table:
             if curr_rid == 0:
                 curr_key += 1 
                 continue
-            value = self.collapse_row(curr_key,query_columns)[aggregate_column_index]
+            value = self.collapse_row(curr_rid, query_columns)[aggregate_column_index]
             sum += value
             curr_key += 1
+        # else:
+
+
 
         return sum
 
