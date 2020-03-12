@@ -1,11 +1,7 @@
 from config import *
 from page import Page
+import threading
 
-# PageRange:
-#   Pages = list of size 12
-#   baseRecordCount = 0
-#   tailRecords = 0
-#   createRecord()
   
 class PageRange:
 
@@ -14,7 +10,7 @@ class PageRange:
         self.tail_pages = []
         self.base_page_count = 0
         self.tail_page_count = 0
-
+        self.tail_page_lock = threading.Lock()
 
 
     def has_open_base_pages(self):
@@ -36,7 +32,22 @@ class PageRange:
 
         return (inner_page_index, new_page)
 
-    def create_tail_page(self):
+    def get_open_tail_page(self):
+        '''
+            Returns (inner_page_index, tail_page)
+        '''
+        with self.tail_page_lock:
+            if self.tail_page_count == 0:
+                inner_idx, tail_page = self._create_tail_page()
+            else:
+                inner_idx, tail_page = self._get_latest_tail()
+                is_open = tail_page.has_capacity()
+                if not is_open:
+                    inner_idx, tail_page = self._create_tail_page()
+
+            return (inner_idx, tail_page)
+
+    def _create_tail_page(self):
         '''
             Returns (inner_page_index, new_page)
         '''
@@ -47,7 +58,7 @@ class PageRange:
 
         return (inner_page_index, new_page)
 
-    def get_latest_tail(self):
+    def _get_latest_tail(self):
         '''
             Returns (inner_page_index, latest_tail_page)
         '''
@@ -57,20 +68,6 @@ class PageRange:
         last_tail_idx = self.tail_page_count - 1
         inner_idx = PAGE_RANGE_MAX_BASE_PAGES + last_tail_idx
         return (inner_idx, self.tail_pages[last_tail_idx])
-
-    def get_open_tail_page(self):
-        '''
-            Returns (inner_page_index, tail_page)
-        '''
-        if self.tail_page_count == 0:
-            inner_idx, tail_page = self.create_tail_page()
-        else:
-            inner_idx, tail_page = self.get_latest_tail()
-            is_open = tail_page.has_capacity()
-            if not is_open:
-                inner_idx, tail_page = self.create_tail_page()
-
-        return (inner_idx, tail_page)
 
     def get_page(self, inner_page_index):
         if inner_page_index < PAGE_RANGE_MAX_BASE_PAGES:

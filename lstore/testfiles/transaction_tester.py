@@ -6,14 +6,16 @@ from transaction_worker import TransactionWorker
 import threading
 from random import choice, randint, sample, seed
 
+import logging
+# logging.basicConfig(level=logging.DEBUG)
+
 db = Database()
 db.open('~/OurSQL')
 grades_table = db.create_table('Grades', 5, 0)
 
 keys = []
 records = {}
-# num_threads = 8
-num_threads = 1
+num_threads = 8
 seed(8739878934)
 
 # Generate random records
@@ -31,7 +33,7 @@ for i in range(num_threads):
 
 # generates 10k random transactions
 # each transaction will increment the first column of a record 5 times
-for i in range(1000):
+for i in range(10000):
     k = randint(0, 2000 - 1)
     transaction = Transaction()
     for j in range(5):

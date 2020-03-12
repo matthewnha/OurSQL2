@@ -2,6 +2,7 @@ from table import *
 from config import *
 from page import Page
 from util import *
+from latch import *
 
 class MergeJob:
 
@@ -30,7 +31,7 @@ class MergeJob:
                 if page_key not in copied_base_pages:
                     og_page = self.table.get_page(pid)
 
-                    self.table.bp.pin(page_key)
+                    self.table.bp.pin_merge(page_key)
                     if page_key not in self.to_unpin:
                         self.to_unpin.append(page_key)
 
@@ -155,7 +156,7 @@ class MergeJob:
             og_page = self.table.get_page(pid)
 
             # Make sure the page is loaded first
-            with og_page.write_lock:
+            with WriteLatch(og_page.latch):
                 if not og_page.is_loaded:
                     raise Exception("The original page isn't loaded")
                 data = new_page._data
@@ -236,7 +237,7 @@ class MergeJob:
 
         self.table.merging = 5
         for page_key in self.to_unpin:
-            self.table.bp.unpin(page_key)
+            self.table.bp.unpin_merge(page_key)
 
         with self.table.merge_lock:
             self.table.bp.flush_unpooled()

@@ -67,6 +67,13 @@ def get_inner_index_from_outer_index(outer_index, container_size):
 
     return base_index
 
+def acquire_latch(lock):
+    while(True):
+        is_acquired = lock.acquire(False)
+        if is_acquired:
+            return lock
+
+
 
 def acquire_all(locks):
     acquired = []

@@ -1,6 +1,7 @@
 from table import Table, Record
 from index import Index
 import threading
+import logging
 
 class TransactionWorker:
 
@@ -30,9 +31,11 @@ class TransactionWorker:
     # transaction_worker = TransactionWorker([t])
     """
     def run(self):
-        for transaction in self.transactions:
+        for i, transaction in enumerate(self.transactions):
             # each transaction returns True if committed or False if aborted
             self.stats.append(transaction.run())
+            logging.debug("{}: completed transaction {} out of {}".format(threading.get_ident(), i, len(self.transactions)))
+
         # stores the number of transactions that committed
         self.result = len(list(filter(lambda x: x, self.stats)))
 

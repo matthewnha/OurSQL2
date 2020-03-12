@@ -3,7 +3,7 @@ from index import Index
 import time
 import threading
 import util
-from lock_manager import *
+from sxlock import *
 
 
 gathering_lock = threading.Lock()
@@ -11,7 +11,6 @@ x_queries = ["insert", "update", "delete", "increment"]
 s_queries = ["select", "sum"]
 
 lm = LockManager()
-
 
 class Transaction:
 

@@ -1,4 +1,5 @@
 import threading
+import logging
 
 
 def with_protection(f):
@@ -12,7 +13,7 @@ def with_protection(f):
 
 class XLock:
     def __init__(self, resource):
-        self.protection = threading.Lock()
+        self.protection = threading.RLock()
         self.owner = None
         self.resource = resource
 
@@ -37,7 +38,7 @@ class XLock:
         if shared_count == 1 and not self.resource.is_s_locked_by_curr():
             return False
 
-        if self.owner != None:
+        if self.owner is not None:
             return False
 
         self.owner = curr_thread
@@ -53,7 +54,7 @@ class XLock:
 
         self.owner = None
 
-        print("Released X Lock", id, curr_thread)
+        logging.debug("{}: {} {}".format("Released X Lock", id, curr_thread))
 
     @with_protection
     def is_locked(self):
@@ -66,7 +67,7 @@ class XLock:
 
 class SLock:
     def __init__(self, resource):
-        self.protection = threading.Lock()
+        self.protection = threading.RLock()
         self.owners = []
         self.resource = resource
 
@@ -101,7 +102,7 @@ class SLock:
         except ValueError:
             raise Exception("Trying to release non-existant s lock")
 
-        print("Released S Lock", id, curr_thread)
+        logging.debug("{}: {} {}".format("Released S Lock", id, curr_thread))
 
     @with_protection
     def get_count(self):
@@ -133,12 +134,16 @@ class Resource:
 class LockManager:
     def __init__(self):
         self.resources = {}
-        self.protection = threading.Lock()
+        self.protection = threading.RLock()
+
+    @with_protection
+    def create(self, id):
+        self.resources[id] = Resource(id)
 
     @with_protection
     def get(self, id):
         if id not in self.resources:
-            self.resources[id] = Resource(id)
+            self.create(id)
         
         return self.resources[id]
 
