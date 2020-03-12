@@ -6,6 +6,8 @@ from transaction_worker import TransactionWorker
 import threading
 from random import choice, randint, sample, seed
 
+from time import process_time
+
 import logging
 # logging.basicConfig(level=logging.DEBUG)
 
@@ -48,6 +50,7 @@ threads = []
 for transaction_worker in transaction_workers:
     threads.append(threading.Thread(target = transaction_worker.run, args = ()))
 
+start = process_time()
 for i, thread in enumerate(threads):
     print('Thread', i, 'started')
     thread.start()
@@ -57,7 +60,10 @@ for i, thread in enumerate(threads):
     print('Thread', i, 'finished')
 
 num_committed_transactions = sum(t.result for t in transaction_workers)
-print(num_committed_transactions, 'transaction committed.')
+end = process_time()
+print(num_committed_transactions, 'transaction committed in', end-start)
+
+
 
 query = Query(grades_table)
 s = query.sum(keys[0], keys[-1], 1)

@@ -71,6 +71,8 @@ class Table:
         self.updates_since_merge = 0
 
         self.get_open_bp_lock = threading.Lock()
+        self.merge_schedule_lock = threading.Lock()
+
 
     def rw_locks(self, rid):
         if rid not in self._rw_locks:
@@ -85,19 +87,19 @@ class Table:
         return self._del_locks[rid]
 
     def schedule_merge(self):
+        with self.merge_schedule_lock:
+            if self.merging <= 0:
+                def start_merge():
+                    # print('Starting merge')
+                    job = MergeJob(self)
+                    self.merging = 1
+                    job.run()
+                    self.merging = 0
+                    # print('Merged')
 
-        def start_merge():
-            # print('Starting merge')
-            job = MergeJob(self)
-            self.merging = 1
-            job.run()
-            self.merging = 0
-            # print('Merged')
-
-        if self.merging <= 0:
-            merge = threading.Thread(target=start_merge, args=())
-            merge.start()
-            self.updates_since_merge = 0
+                merge = threading.Thread(target=start_merge, args=())
+                merge.start()
+                self.updates_since_merge = 0
 
     def create_index(self, column_idx):
         self.indices.create_index(column_idx)
