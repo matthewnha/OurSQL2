@@ -9,6 +9,7 @@ from random import choice, randint, sample, seed
 from time import process_time
 
 import logging
+# logging.basicConfig(filename="logging.log", level=logging.DEBUG)
 # logging.basicConfig(level=logging.DEBUG)
 
 db = Database()
@@ -19,7 +20,7 @@ keys = []
 records = {}
 num_threads = 8
 seed(8739878934)
-
+start = process_time()
 # Generate random records
 for i in range(0, 10000):
     key = 92106429 + i
@@ -27,6 +28,10 @@ for i in range(0, 10000):
     records[key] = [key, 0, 0, 0, 0]
     q = Query(grades_table)
     q.insert(*records[key])
+    print("Insert", i)
+end = process_time()
+
+print("Created 10,000 records in", end-start)
 
 # create TransactionWorkers
 transaction_workers = []

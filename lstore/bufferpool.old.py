@@ -6,7 +6,6 @@ from collections import defaultdict
 
 import logging
 import threading
-from queue import Queue
 
 class BufferPool:
 
@@ -25,115 +24,130 @@ class BufferPool:
         self.table = table # type: Table
 
         self.pop_lock = threading.Lock() # i love hip hop
-        self.pop_locks = [threading.RLock() for _ in range(8)]
         self.pages_lock = threading.RLock()
         self.num_pool_pages_lock = threading.Lock()
 
-        self.pool_update_lock = threading.Lock()
-        self.load_locks = [threading.Lock() for _ in range(8)]
-
-        # self.add_queue = []
-        self.add_queue = Queue()
-        self.add_q_check = threading.Condition()
-
-        threading.Thread(target=self._handle_add_pool).start()
-
-
-    def _handle_add_pool(self):
-        while True:
-            pool_key = self.add_queue.get()
-            page_key, _ = pool_key
-
-            logging.debug("%s: (%s) start: %s", threading.get_ident(), "_update_pool_get", page_key)
-            try:
-                idx = self.pages.index(pool_key)
-                self.pages.pop(idx)
-            except ValueError:
-                logging.debug("%s: (%s) page not in pool: %s", threading.get_ident(), "_update_pool_get", page_key)
-                self.num_pool_pages += 1
-
-            logging.debug("%s: (%s) adding to bufferpool pagekey: %s", threading.get_ident(), "_update_pool_get", page_key)
-            self.pages.append(pool_key)
-            logging.debug("%s: (%s) added to bufferpool pagekey: %s", threading.get_ident(), "_update_pool_get", page_key)
-
-            if self.num_pool_pages > MAX_POOL_PAGES:
-                self._pop_pages()
-
-
     def _update_pool_get(self, page_key, page):
         pool_key = (page_key, page)
-        self.add_queue.put(pool_key)
+        try:
+            idx = self.pages.index(pool_key)
+            self.pages.pop(idx)
+        except ValueError:
+            logging.debug("%s: (%s) page not in pool: %s", threading.get_ident(), "get_update_pool_get_page", page_key)
+
+        self.pages.append(pool_key)
+
+
+
+    def _update_pool_remove(self, page_key, page):
+        pool_key = (page_key, page)
+        pass
 
     def get_page(self, pid, pin=False):
+
         _, page_idx, page_range_idx = pid
         page_range = self.table.page_ranges[page_range_idx] # type: PageRange
         page = page_range.get_page(page_idx) # type: Page
-        page_key = (pid[1], pid[2])
-        hashed = self.hash(page_key, len(self.load_locks))
-        lock = self.pop_locks[hashed]
-
-        with lock:
-            logging.debug("%s: (%s) start: %s", threading.get_ident(), "get_page", pid)
-            
+        page_key = (pid[1],pid[2])
+        logging.debug("%s: (%s) start: %s", threading.get_ident(), "get_page", pid)
+        
+        with self.pages_lock:
             if pin:
                 self.pin(page_key)
+    
+            if not page.is_loaded:
+                logging.debug("%s: (%s) load from disk pid: %s", threading.get_ident(), "get_page", pid)
+                self._load_from_disk(pid, page)
 
-            self.add_page(pid, page)
+            if (page_key, page) not in self.pages:
+
+                if self.num_pool_pages >= MAX_POOL_PAGES:
+                    self._pop_page()
+
+                self.num_pool_pages += 1
+
+
+                logging.debug("%s: (%s) adding to bufferpool pid: %s", threading.get_ident(), "get_page", pid)
+                self.pages.append((page_key, page))
             
             return page
 
     def add_page(self, pid, page, pin=False):
         logging.debug("%s: (%s) start pid: %s", threading.get_ident(), "add_page", pid)
+        if self.num_pool_pages >= MAX_POOL_PAGES:
+            self._pop_page()
         
         page_key = (pid[1], pid[2])
-        logging.debug("%s: (%s) start: %s", threading.get_ident(), "get_page", pid)
         
-        hashed = self.hash(page_key, len(self.load_locks))
-        lock = self.pop_locks[hashed]
+        if pin:
+            logging.debug("%s: (%s) pinned: %s", threading.get_ident(), "add_page", pid)
+            self.pin(page_key)
+        
+        with self.pages_lock:
+            if (page_key, page) in self.pages:
+                if not page.is_loaded:
+                    raise Exception("Page is in bufferpool but isn't loaded")
 
-        with lock:
-            if pin:
-                self.pin(page_key)
+                index2 = self.pages.index((page_key, page))
+                value = self.pages.pop(index2)
+                self.pages.append(value)
+                logging.debug("%s: (%s) updated lru: %s", threading.get_ident(), "add_page", pid)
 
-            if not page.is_loaded:
-                logging.debug("%s: (%s) load from disk pid: %s", threading.get_ident(), "get_page", pid)
-                self._load_from_disk(page_key, page)
+            elif page.is_loaded:
+                logging.debug("%s: (%s) loaded, adding to lru list lru: %s", threading.get_ident(), "add_page", pid)
+                self.pages.append((page_key, page))
+                with self.num_pool_pages_lock:
+                        self.num_pool_pages += 1
 
-            self._update_pool_get(page_key, page)
+            else:
+                logging.debug("%s: (%s) not loaded, loading: %s", threading.get_ident(), "add_page", pid)
+                self.get_page(pid)
 
+    def _load_from_disk(self, pid, page):    
+        page_key = (pid[1],pid[2])
+        self.disk.import_page(page, page_key, self.table, self.table.name)
 
-    def _pop_pages(self) -> Page:
+        return page
+
+    def _pop_page(self) -> Page:
         '''
         Pops page and decides via ? method (LRU/MRU)
         '''
 
-        logging.debug("{}: {}".format(threading.get_ident(), "bp._pop_page"))
+        with self.pages_lock:
+            if self.num_pool_pages < MAX_POOL_PAGES:
+                return
 
-        i = 0
+            logging.debug("{}: {}".format(threading.get_ident(), "bp._pop_page"))
 
-        page_key, page_to_pop = self.pages[i]
-        pages_to_remove = []
-        num_pages_to_remove = self.num_pool_pages//4
-
-        while i < self.num_pool_pages and len(pages_to_remove) < num_pages_to_remove:
+            i = 0
 
             page_key, page_to_pop = self.pages[i]
+            pages_to_remove = []
+            num_pages_to_remove = self.num_pool_pages//4
 
-            if self.pins[page_key] <= 0:
-                pages_to_remove.append(self.pages.pop(i))
-                self.num_pool_pages -= 1
+            while i < self.num_pool_pages and len(pages_to_remove) < num_pages_to_remove:
 
-            if i >= self.num_pool_pages:
-                i = 0
-            else:
-                i += 1
+                page_key, page_to_pop = self.pages[i]
 
-        for page in pages_to_remove:
+                if self.pins[page_key] <= 0:
+                    pages_before_pop = len(self.pages)
+                    pages_to_remove.append(self.pages.pop(i))
+                    pages_after_pop = len(self.pages)
+                    if pages_after_pop == pages_before_pop:
+                        raise Exception("Pop didn't change original")
 
-            page_key, page_to_pop = page
-            hashed = self.hash(page_key, len(self.load_locks))
-            lock = self.pop_locks[hashed]
-            with lock:
+                    self.num_pool_pages -= 1
+
+                if i >= self.num_pool_pages:
+                    i = 0
+                else:
+                    i += 1
+
+            for page in pages_to_remove:
+
+                page_key, page_to_pop = page
+
                 if page in self.pins and self.pins[page] > 0:
                     raise Exception("Trying to remove page taht is pinned")
 
@@ -148,25 +162,10 @@ class BufferPool:
                     logging.debug("%s: (%s) unloading page pid: %s", threading.get_ident(), "_pop_page", page_key)
                     page_to_pop.unload()
                     logging.debug("%s: (%s) unloaded page pid: %s", threading.get_ident(), "_pop_page", page_key)
-
+    
     def write_new_page_range(self, page_range, num):
         self.disk.write_page_range(page_range, num, self.table.name)
 
-    def hash(self, page_key, num):
-        to_hash = page_key[0]
-        hashed = to_hash % num
-        return hashed
-
-    def _load_from_disk(self, page_key, page):
-        hashed = self.hash(page_key, len(self.load_locks))
-        lock = self.load_locks[hashed]
-
-        with lock:
-            if not page.is_loaded:
-                self.disk.import_page(page, page_key, self.table, self.table.name)
-                
-            return page
-        
     def _write_to_disk(self, page_key, page):
         self.disk.write_page(page, page_key, self.table, self.table.name)
         page.is_dirty = False
