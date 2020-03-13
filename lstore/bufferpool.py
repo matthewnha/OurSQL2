@@ -25,12 +25,12 @@ class BufferPool:
         self.table = table # type: Table
 
         self.pop_lock = threading.Lock() # i love hip hop
-        self.pop_locks = [threading.RLock() for _ in range(8)]
+        self.pop_locks = [threading.RLock() for _ in range(200)]
         self.pages_lock = threading.RLock()
         self.num_pool_pages_lock = threading.Lock()
 
         self.pool_update_lock = threading.Lock()
-        self.load_locks = [threading.Lock() for _ in range(8)]
+        self.load_locks = [threading.Lock() for _ in range(200)]
 
         # self.add_queue = []
         self.add_queue = Queue()
@@ -153,7 +153,7 @@ class BufferPool:
         self.disk.write_page_range(page_range, num, self.table.name)
 
     def hash(self, page_key, num):
-        to_hash = page_key[0]
+        to_hash = page_key[0] + (100 * (page_key[1] +1))
         hashed = to_hash % num
         return hashed
 
