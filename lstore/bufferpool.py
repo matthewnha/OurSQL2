@@ -94,7 +94,7 @@ class BufferPool:
         else:
             lock = self.pop_locks[hashed]
 
-        with lock if lock else none_context:
+        with (lock if lock else none_context):
             if pin:
                 self.pin(page_key)
 
