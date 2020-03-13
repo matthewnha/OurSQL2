@@ -7,6 +7,7 @@ from collections import defaultdict
 import logging
 import threading
 from queue import Queue
+from contextlib import nullcontext
 
 class BufferPool:
 
@@ -24,17 +25,13 @@ class BufferPool:
         # self.least_recently_used = []
         self.table = table # type: Table
 
-        self.pop_lock = threading.Lock() # i love hip hop
-        self.pop_locks = [threading.RLock() for _ in range(500)]
-        self.pages_lock = threading.RLock()
+        self.pop_locks = [threading.Lock() for _ in range(500)]
         self.num_pool_pages_lock = threading.Lock()
 
-        self.pool_update_lock = threading.Lock()
         self.load_locks = [threading.Lock() for _ in range(500)]
 
         # self.add_queue = []
         self.add_queue = Queue()
-        self.add_q_check = threading.Condition()
 
         threading.Thread(target=self._handle_add_pool).start()
 
@@ -69,6 +66,7 @@ class BufferPool:
         page_range = self.table.page_ranges[page_range_idx] # type: PageRange
         page = page_range.get_page(page_idx) # type: Page
         page_key = (pid[1], pid[2])
+
         hashed = self.hash(page_key, len(self.load_locks))
         lock = self.pop_locks[hashed]
 
@@ -82,16 +80,19 @@ class BufferPool:
             
             return page
 
-    def add_page(self, pid, page, pin=False):
+    def add_page(self, pid, page, pin=False, have_lock=False):
         logging.debug("%s: (%s) start pid: %s", threading.get_ident(), "add_page", pid)
         
         page_key = (pid[1], pid[2])
         logging.debug("%s: (%s) start: %s", threading.get_ident(), "get_page", pid)
         
         hashed = self.hash(page_key, len(self.load_locks))
-        lock = self.pop_locks[hashed]
+        if have_lock:
+            lock = None
+        else:
+            lock = self.pop_locks[hashed]
 
-        with lock:
+        with lock if lock else nullcontext():
             if pin:
                 self.pin(page_key)
 
@@ -100,7 +101,6 @@ class BufferPool:
                 self._load_from_disk(page_key, page)
 
             self._update_pool_get(page_key, page)
-
 
     def _pop_pages(self) -> Page:
         '''
