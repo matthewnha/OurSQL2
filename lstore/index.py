@@ -65,7 +65,7 @@ class Index:
         tree.remove(key, rid)
 
     def remove_by_rid(self, column, rid):
-        key = self.locate_by_rid(column, rid)
+        key = self.locate_by_rid(rid, column)
 
         if key != None:
             self.remove(column, key, rid)
@@ -89,7 +89,7 @@ class Index:
         table_keys = list(self.table.key_index.keys())
         table_rids = list(self.table.key_index.values())
 
-        table_col = [None for a in range(self.table.num_columns)]
+        table_col = [0 for a in range(self.table.num_columns)]
         table_col[column_number] = 1
 
         for i in range(len(self.table.key_index)):

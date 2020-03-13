@@ -62,7 +62,7 @@ class Table:
         self.bp = BufferPool(self, disk)
         self.key_index = {} # key -> base MetaRecord PID # Don't export
         self.indices = Index(self) # Don't export
-        self.indices.create_index(key_col)
+        # self.indices.create_index(key_col)
 
         self.merging = 0
         self.updates_since_merge = 0
@@ -501,8 +501,8 @@ class Table:
     def delete_record(self, key):
 
         try:
-            # base_rid = self.key_index[key]
-            base_rid = self.indices.locate(self.key_col, key)
+            base_rid = self.key_index[key]
+            #base_rid = self.indices.locate(self.key_col, key)
         except KeyError:
             raise Exception("Not a valid key")
 
@@ -558,9 +558,9 @@ class Table:
                     new_tail_rid = int_from_bytes(new_tail_rid)
 
             # Release locks and return
-            for column in self.indices.indices:
-                if self.indices.is_indexed(column):
-                    self.indices.remove_by_rid(column, base_rid)
+            for i in range(len(self.indices.indices)):
+                if self.indices.is_indexed(i):
+                    self.indices.remove_by_rid(i, base_rid)
 
             release_all(locks)
             return True
@@ -570,13 +570,10 @@ class Table:
 
 
     def sum_records(self, start_range, end_range, aggregate_column_index):
-        #col_idx = aggregate_column_index + START_USER_DATA_COLUMN
         query_columns = [0]*self.num_columns
         query_columns [aggregate_column_index] = 1
 
         sum = 0
-            
-        # if aggregate_colemn_index == self.key_col or not self.indices.is_indexed(aggregate_column_index):
             
         if start_range <= end_range:
             curr_key = start_range
@@ -585,25 +582,24 @@ class Table:
             curr_key = end_range
             end = start_range
 
-        while curr_key != (end+1):            
+
+        while curr_key != (end+1): 
+
             try:
                 curr_rid = self.key_index[curr_key]
                 # curr_rid = self.indices.locate(self.key_col, curr_key)
             except KeyError:
                 curr_key += 1
                 continue
+
             if curr_rid == 0:
                 curr_key += 1 
                 continue
+
             value = self.collapse_row(curr_rid, query_columns)[aggregate_column_index]
+
             sum += value
             curr_key += 1
-        # else:
-
-
 
         return sum
-
-    def __merge(self):
-        pass
 

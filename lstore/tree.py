@@ -110,7 +110,6 @@ class Node():
                 left.rids = self.rids[:mid]
                 right.rids = self.rids[mid:]
                 self.keys = [left.keys[-1]]
-
                 
         else:
             left.rids = self.rids[:mid]
@@ -295,15 +294,15 @@ class BPlusTree(object):
         current_node = self.left
         key = None
 
-        while current_node != None and key != None:
+        while key == None and current_node != None:
 
             for i ,rids in enumerate(current_node.rids):
                 for cur_rid in rids:
                     if cur_rid == rid:
                         key = current_node.keys[i]
-                        current_node.remove(key,rid)
-
-
+            
+            current_node = current_node.right
+            
         return key
         
 
@@ -312,7 +311,7 @@ class BPlusTree(object):
         if parents:
             parent, index = parents.pop()
         else:
-            print("EHHHHHHH")
+            # print("EHHHHHHH")
             return None
 
         sibling_index = index
@@ -516,7 +515,7 @@ def demo_treeNum():
     print("Start demo")
     keys = []
 
-    for i in range(100):
+    for i in range(16):
         key = randint(0, 9000)
         while key in keys:
             key = randint(0, 9000)
