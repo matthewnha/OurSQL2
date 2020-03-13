@@ -88,13 +88,13 @@ class BufferPool:
         page_key = (pid[1], pid[2])
         logging.debug("%s: (%s) start: %s", threading.get_ident(), "get_page", pid)
         
-        hashed = self.hash(page_key, len(self.load_locks))
         if have_lock:
             lock = None
         else:
+            hashed = self.hash(page_key, len(self.load_locks))
             lock = self.pop_locks[hashed]
 
-        with (lock if lock else none_context):
+        with (lock if lock is not None else none_context):
             if pin:
                 self.pin(page_key)
 
