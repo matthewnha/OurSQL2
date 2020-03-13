@@ -71,5 +71,33 @@ class Transaction:
     def commit(self):
         # TODO: commit to database
         util.release_all(self.acquired_locks)
+
+        # query =  #
+        # curr_thread = threading.get_ident()
+        # del query.__self__.table.uncommited_stuff[curr_thread]
+        
         return True
 
+
+
+# class InsertLog():
+#     def __init__(self):
+#         self.key
+#         self.pages_to_commit
+#         self.records_to_commit
+
+#     def rollback(self):
+#         # do stuff
+
+# class IncrementLog():
+#     def __init__(self):
+#         self.key
+#         self.pages_to_commit
+#         self.records_to_commit
+
+#     def rollback(self):
+#         # do stuff
+
+# log = [InsertLog, Select]
+# for item in log
+#     item.rollback()

@@ -74,7 +74,7 @@ class Table:
 
         self.get_open_bp_lock = threading.Lock()
         self.merge_schedule_lock = threading.Lock()
-
+        
 
     def rw_locks(self, rid):
         if rid not in self._rw_locks:

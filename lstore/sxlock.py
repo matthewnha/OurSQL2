@@ -18,7 +18,7 @@ class XLock:
         self.resource = resource
 
     @with_protection
-    def acquire(self, block):
+    def acquire(self):
         '''
         User acquiring lock
 
@@ -56,11 +56,9 @@ class XLock:
 
         logging.debug("{}: {} {}".format("Released X Lock", id, curr_thread))
 
-    @with_protection
     def is_locked(self):
         return self.owner != None
 
-    @with_protection
     def get_owner(self):
         return self.owner
 
