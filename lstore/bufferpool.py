@@ -1,3 +1,6 @@
+from contextlib import contextmanager
+none_context = contextmanager(lambda: iter([None]))()
+
 from page import Page
 from pagerange import PageRange
 from config import *
@@ -7,7 +10,6 @@ from collections import defaultdict
 import logging
 import threading
 from queue import Queue
-from contextlib import nullcontext
 
 class BufferPool:
 
@@ -92,7 +94,7 @@ class BufferPool:
         else:
             lock = self.pop_locks[hashed]
 
-        with lock if lock else nullcontext():
+        with lock if lock else none_context:
             if pin:
                 self.pin(page_key)
 
