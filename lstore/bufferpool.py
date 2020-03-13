@@ -1,5 +1,5 @@
 from contextlib import contextmanager
-none_context = contextmanager(lambda: iter([None]))()
+none_context = contextmanager(lambda: iter([None]))
 
 from page import Page
 from pagerange import PageRange
@@ -94,7 +94,7 @@ class BufferPool:
             hashed = self.hash(page_key, len(self.load_locks))
             lock = self.pop_locks[hashed]
 
-        with (lock if lock is not None else none_context):
+        with (lock if lock is not None else none_context()):
             if pin:
                 self.pin(page_key)
 
