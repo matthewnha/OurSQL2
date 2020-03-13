@@ -78,7 +78,7 @@ class BufferPool:
             if pin:
                 self.pin(page_key)
 
-            self.add_page(pid, page)
+            self.add_page(pid, page, have_lock=True)
             
             return page
 
