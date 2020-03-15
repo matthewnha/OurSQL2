@@ -18,7 +18,7 @@ class XLock:
         self.resource = resource
 
     @with_protection
-    def acquire(self):
+    def acquire(self, block):
         '''
         User acquiring lock
 
