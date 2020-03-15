@@ -28,8 +28,6 @@ class BufferPool:
         self.table = table # type: Table
 
         self.pop_locks = [threading.Lock() for _ in range(500)]
-        self.num_pool_pages_lock = threading.Lock()
-
         self.load_locks = [threading.Lock() for _ in range(500)]
 
         # self.add_queue = []

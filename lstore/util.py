@@ -1,4 +1,5 @@
 from config import *
+import threading
 
 def sanitize(table_name):
     """
@@ -148,6 +149,25 @@ def test():
 
     pid = (123, 456, 789)
     print(decode_pid(encode_pid(pid)))
+
+class Counter:
+    def __init__(self, initial_val):
+        self.crit = threading.Lock()
+        self.val = initial_val
+
+    def get(self):
+        with self.crit:
+            return self.val
+
+    def increment(self):
+        with self.crit:
+            self.val += 1
+            return self.val
+
+    def decrement(self):
+        with self.crit:
+            self.val -= 1
+            return self.val
 
 
 if __name__ == '__main__':
