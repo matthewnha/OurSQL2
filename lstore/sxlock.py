@@ -25,7 +25,7 @@ class XLock:
         block: compatibility, ignored
         '''
 
-        curr_thread = threading.currentThread()
+        curr_thread = threading.get_ident()
 
         if curr_thread == self.owner:
             return True
@@ -47,7 +47,7 @@ class XLock:
     @with_protection
     def release(self):
 
-        curr_thread = threading.currentThread()
+        curr_thread = threading.get_ident()
 
         if self.owner != curr_thread:
             raise Exception("Trying to release non-existant x lock")
@@ -77,7 +77,7 @@ class SLock:
         block: compatibility, ignored
         '''
 
-        curr_thread = threading.currentThread()
+        curr_thread = threading.get_ident()
 
         if curr_thread in self.owners:
             return True
@@ -92,7 +92,7 @@ class SLock:
     @with_protection
     def release(self):
 
-        curr_thread = threading.currentThread()
+        curr_thread = threading.get_ident()
 
         try:
             idx = self.owners.index(curr_thread)
@@ -108,7 +108,7 @@ class SLock:
 
     @with_protection
     def is_owned_by_curr(self):
-        curr_thread = threading.currentThread()
+        curr_thread = threading.get_ident()
         return curr_thread in self.owners
 
 class Resource:
