@@ -106,8 +106,9 @@ class Page:
         if len(value) != CELL_SIZE_BYTES:
             value = int.from_bytes(value,'little')
             value = value.to_bytes(CELL_SIZE_BYTES,'little')
-        self._data[start:end] = value
-        self.is_dirty = True
+        with self.write_latch:
+            self._data[start:end] = value
+            self.is_dirty = True
 
         return self.num_records
 
@@ -135,8 +136,9 @@ class Page:
         return bytes(self._data[start:end])
 
     def copy(self):
-        copy = Page()
-        copy._data = self._data.copy()
-        copy.num_records = self.num_records
-        return copy
+        with self.write_latch:
+            copy = Page()
+            copy._data = self._data.copy()
+            copy.num_records = self.num_records
+            return copy
 
