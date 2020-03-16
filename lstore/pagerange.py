@@ -36,16 +36,16 @@ class PageRange:
         '''
             Returns (inner_page_index, tail_page)
         '''
-        with self.tail_page_lock:
-            if self.tail_page_count == 0:
+        # with self.tail_page_lock:
+        if self.tail_page_count == 0:
+            inner_idx, tail_page = self._create_tail_page()
+        else:
+            inner_idx, tail_page = self._get_latest_tail()
+            is_open = tail_page.has_capacity()
+            if not is_open:
                 inner_idx, tail_page = self._create_tail_page()
-            else:
-                inner_idx, tail_page = self._get_latest_tail()
-                is_open = tail_page.has_capacity()
-                if not is_open:
-                    inner_idx, tail_page = self._create_tail_page()
 
-            return (inner_idx, tail_page)
+        return (inner_idx, tail_page)
 
     def _create_tail_page(self):
         '''

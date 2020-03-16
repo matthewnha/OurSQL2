@@ -377,7 +377,7 @@ class Table:
         logging.debug("%s: (%s) Start write tail column: %s, data: %s", threading.get_ident(), "write_tail_column", column, data)
         _,_,page_range_idx = base_record.columns[column]
         page_range = self.page_ranges[page_range_idx] # type: PageRange
-        with self.get_open_tp_lock:
+        with page_range.tail_page_lock:
             column_inner_idx, column_page = page_range.get_open_tail_page()
             column_pid = [None, column_inner_idx, page_range_idx]
             logging.debug("%s: (%s) Got open tail page pid: %s", threading.get_ident(), "write_tail_column", column_pid)
@@ -388,9 +388,7 @@ class Table:
             num_records_in_page = column_page.write(data)
             column_cell_idx = num_records_in_page - 1
             column_pid[0] = column_cell_idx
-
-        self.bp.unpin((column_inner_idx, page_range_idx))
-
+            self.bp.unpin((column_inner_idx, page_range_idx))
 
         return column_pid
 
