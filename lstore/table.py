@@ -15,8 +15,6 @@ from bufferpool import BufferPool
 
 import logging
 
-lm_r = LatchManager() # LatchManager for records
-
 class MetaRecord:
     def __init__(self, rid, key, columns):
         self.rid = rid
@@ -259,7 +257,6 @@ class Table:
         data_cols = [pid for pid, _ in column_pids_and_pages]
         record = MetaRecord(rid, key, sys_cols + data_cols)
         self.page_directory[rid] = record
-        lm_r.create(rid)
 
         self._rw_locks[rid] = threading.Lock()
         self._del_locks[rid] = threading.Lock()
