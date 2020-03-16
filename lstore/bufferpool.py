@@ -4,6 +4,7 @@ none_context = contextmanager(lambda: iter([None]))
 from page import Page
 from pagerange import PageRange
 from config import *
+from latch import *
 from collections import defaultdict
 
 import logging
@@ -66,8 +67,7 @@ class BufferPool:
         page_key = (pid[1], pid[2])
 
         hashed = self.hash(page_key, len(self.load_locks))
-        # lock = self.pop_locks[hashed]
-        lock = page.pop_latch
+        lock = self.pop_locks[hashed]
 
         with lock:
             logging.debug("%s: (%s) start: %s", threading.get_ident(), "get_page", pid)
@@ -89,8 +89,7 @@ class BufferPool:
             lock = None
         else:
             hashed = self.hash(page_key, len(self.load_locks))
-            # lock = self.pop_locks[hashed]
-            lock = page.pop_latch
+            lock = self.pop_locks[hashed]
 
         with (lock if lock is not None else none_context()):
             if pin:
@@ -119,10 +118,9 @@ class BufferPool:
 
             page_key, page_to_pop = self.pages[i]
 
-            with page_to_pop.pop_latch:
-                if self.pins[page_key] <= 0:
-                    pages_to_remove.append(self.pages.pop(i))
-                    self.num_pool_pages -= 1
+            if self.pins[page_key] <= 0:
+                pages_to_remove.append(self.pages.pop(i))
+                self.num_pool_pages -= 1
 
             if i >= self.num_pool_pages:
                 i = 0
@@ -133,22 +131,21 @@ class BufferPool:
 
             page_key, page_to_pop = page
             hashed = self.hash(page_key, len(self.load_locks))
-            # lock = self.pop_locks[hashed]
-            with page_to_pop.pop_latch:
-                with page_to_pop.disk_latch:
-                    if self.pins[page] > 0:
-                        raise Exception("Trying to remove page taht is pinned")
+            lock = self.pop_locks[hashed]
+            with lock:
+                if self.pins[page] > 0:
+                    raise Exception("Trying to remove page taht is pinned")
 
-                    if self.merge_pins[page_key] == 1:
-                        logging.debug("%s: (%s) wanted to unload page pid: %s but ", threading.get_ident(), "_pop_page", page_key)
-                        self.loaded_off_pool.append((page_key, page_to_pop))
-                    else:
-                        if page_to_pop.is_dirty:
-                            self._write_to_disk(page_key, page_to_pop)
+                if self.merge_pins[page_key] == 1:
+                    logging.debug("%s: (%s) wanted to unload page pid: %s but ", threading.get_ident(), "_pop_page", page_key)
+                    self.loaded_off_pool.append((page_key, page_to_pop))
+                else:
+                    if page_to_pop.is_dirty:
+                        self._write_to_disk(page_key, page_to_pop)
 
-                        logging.debug("%s: (%s) unloading page pid: %s", threading.get_ident(), "_pop_page", page_key)
-                        page_to_pop.unload()
-                        logging.debug("%s: (%s) unloaded page pid: %s", threading.get_ident(), "_pop_page", page_key)
+                    logging.debug("%s: (%s) unloading page pid: %s", threading.get_ident(), "_pop_page", page_key)
+                    page_to_pop.unload()
+                    logging.debug("%s: (%s) unloaded page pid: %s", threading.get_ident(), "_pop_page", page_key)
 
     def write_new_page_range(self, page_range, num):
         self.disk.write_page_range(page_range, num, self.table.name)
@@ -160,8 +157,7 @@ class BufferPool:
 
     def _load_from_disk(self, page_key, page):
         hashed = self.hash(page_key, len(self.load_locks))
-        # lock = self.load_locks[hashed]
-        lock = page.disk_latch
+        lock = self.load_locks[hashed]
 
         with lock:
             if not page.is_loaded:
@@ -179,7 +175,8 @@ class BufferPool:
         logging.debug("{}: {} {} {}".format(threading.get_ident(), "bp.pin", page_key, self.pins[page_key]))
 
     def unpin(self, page_key):
-        self.pins[page_key] -= 1
+        if self.pins[page_key] != 0:
+            self.pins[page_key] -= 1
 
         logging.debug("{}: {} {} {}".format(threading.get_ident(), "bp.unpin", page_key, self.pins[page_key]))
 
@@ -206,14 +203,12 @@ class BufferPool:
             page_key, page_to_pop = self.loaded_off_pool.pop()
             logging.debug("%s: %s %s", threading.get_ident(), "considering bp.flush_unpooled", page_key)
 
+            if self.pins[page_key] > 0:
+                logging.debug("%s: Was about to flush a page that was pinned", threading.get_ident())
+                continue
 
             # with WriteLatch(page_to_pop.latch):
-            # with page_to_pop.latch:
-            with page_to_pop.disk_latch:
-                if self.pins[page_key] > 0:
-                    logging.debug("%s: Was about to flush a page that was pinned", threading.get_ident())
-                    continue
-
+            with page_to_pop.latch:
                 if page_to_pop.is_dirty:
                     self._write_to_disk(page_key, page_to_pop)
 

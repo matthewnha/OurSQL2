@@ -13,7 +13,7 @@ import logging
 # logging.basicConfig(level=logging.DEBUG)
 
 db = Database()
-db.open('~/OurSQL2')
+db.open('~/OurSQL')
 grades_table = db.create_table('Grades', 5, 0)
 
 keys = []
@@ -42,7 +42,6 @@ for i in range(num_threads):
 # each transaction will increment the first column of a record 5 times
 for i in range(10000):
     k = randint(0, 2000 - 1)
-    # k = randint(0, 1000 - 1)
     transaction = Transaction()
     for j in range(5):
         key = keys[k * 5 + j]
