@@ -159,6 +159,8 @@ class Table:
             except IndexError:
                 page_range = PageRange()
                 index = len(self.page_ranges)
+                if index != page_range_idx:
+                    raise Exception("Created index does not match intended")
                 self.page_ranges.append(page_range)
                 self.bp.write_new_page_range(page_range, index)
 

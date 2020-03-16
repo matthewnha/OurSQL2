@@ -26,7 +26,7 @@ class Query:
     # Read a record with specified RID
     """
 
-    # @with_merge_lock
+    @with_merge_lock
     def delete(self, key):
         return self.table.delete_record(key)
 
@@ -39,7 +39,7 @@ class Query:
     # TIMESTAMP_COLUMN = 2
     # SCHEMA_ENCODING_COLUMN = 3
 
-    # @with_merge_lock
+    @with_merge_lock
     def insert(self, *columns):
         if len(columns) > self.table.num_columns:
             raise Exception('More arguments than columns')
@@ -74,7 +74,7 @@ class Query:
     :param aggregate_columns: int  # Index of desired column to aggregate
     """
 
-    # @with_merge_lock
+    @with_merge_lock
     def sum(self, start_range, end_range, aggregate_column_index):
         return self.table.sum_records(start_range,end_range,aggregate_column_index)
 
