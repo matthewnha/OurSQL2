@@ -74,10 +74,10 @@ class Page:
 
             value: Must be bytes of the specified CELLS_PER_PAGE size
         '''
-        if not self.has_capacity():
-            raise Exception('page is full')
-
         with self.num_records_lock:
+            if not self.has_capacity():
+                raise Exception('page is full')
+
             start = (self.num_records + 1) * CELL_SIZE_BYTES
             self.num_records += 1
             record_num = self.num_records # the number of this particular record (index+1)
@@ -102,7 +102,7 @@ class Page:
             if not self.has_capacity():
                 raise Exception('page is full')
             self.num_records += 1
-            
+
         start = (cell_idx + 1) * CELL_SIZE_BYTES
         end = start + CELL_SIZE_BYTES
         if len(value) != CELL_SIZE_BYTES:
