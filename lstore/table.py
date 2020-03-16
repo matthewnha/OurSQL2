@@ -129,7 +129,7 @@ class Table:
 
     def get_open_base_page(self, col_idx, curr_num_rows):
         # how many pages for this column exists
-        num_col_pages = ceil((num_rows - 1) / CELLS_PER_PAGE)
+        num_col_pages = ceil((curr_num_rows - 1) / CELLS_PER_PAGE)
 
         # index of the last used page in respect to all pages across all page ranges
         prev_outer_page_idx = col_idx + max(0, num_col_pages - 1) * self.num_total_cols
@@ -141,7 +141,7 @@ class Table:
         prev_inner_page_idx = get_inner_index_from_outer_index(prev_outer_page_idx, PAGE_RANGE_MAX_BASE_PAGES)
 
         # index of cell within page
-        mod = (num_rows - 1) % CELLS_PER_PAGE
+        mod = (curr_num_rows - 1) % CELLS_PER_PAGE
         max_cell_index = CELLS_PER_PAGE - 1
         prev_cell_idx = max_cell_index if (0 == mod) else (mod - 1)
 
@@ -149,7 +149,7 @@ class Table:
             # Go to next col page
 
             # New cell's page index in respect to all pages
-            outer_page_idx = col_idx if 0 == (num_rows - 1) else prev_outer_page_idx + self.num_total_cols
+            outer_page_idx = col_idx if 0 == (curr_num_rows - 1) else prev_outer_page_idx + self.num_total_cols
 
             # New cell's page range index
             page_range_idx = floor(outer_page_idx / PAGE_RANGE_MAX_BASE_PAGES)
@@ -186,7 +186,7 @@ class Table:
 
             page = page_range.get_page(inner_page_idx)
             if (None == page):
-                raise Exception('No page returned', cell_idx, inner_page_idx, page_range_idx, outer_page_idx, (num_rows - 1), col_idx)
+                raise Exception('No page returned', cell_idx, inner_page_idx, page_range_idx, outer_page_idx, (curr_num_rows - 1), col_idx)
             
         pid = [cell_idx, inner_page_idx, page_range_idx]
 
