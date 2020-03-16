@@ -130,7 +130,8 @@ class BufferPool:
 
             page_key, page_to_pop = page
             hashed = self.hash(page_key, len(self.load_locks))
-            lock = self.pop_locks[hashed]
+            # lock = self.pop_locks[hashed]
+            lock = page_to_pop.disk_latch
             with lock:
                 if self.pins[page] > 0:
                     raise Exception("Trying to remove page taht is pinned")
@@ -156,7 +157,8 @@ class BufferPool:
 
     def _load_from_disk(self, page_key, page):
         hashed = self.hash(page_key, len(self.load_locks))
-        lock = self.load_locks[hashed]
+        # lock = self.load_locks[hashed]
+        lock = page.disk_latch
 
         with lock:
             if not page.is_loaded:
@@ -207,7 +209,8 @@ class BufferPool:
                 continue
 
             # with WriteLatch(page_to_pop.latch):
-            with page_to_pop.latch:
+            # with page_to_pop.latch:
+            with page_to_pop.disk_latch:
                 if page_to_pop.is_dirty:
                     self._write_to_disk(page_key, page_to_pop)
 
