@@ -3,6 +3,13 @@ from util import *
 from time import process_time
 
 import threading
+def with_protection(f):
+    def wrapper(*args):
+        lock_inst = args[0]
+        with lock_inst.page_lock:
+            return f(*args)
+
+    return wrapper
 
 class Page:
 
@@ -13,6 +20,7 @@ class Page:
         self.write_latch = threading.Lock()
         self.disk_latch = threading.Lock()
         self.pop_latch = threading.Lock()
+        self.page_lock = threading.Lock
 
         if is_importing:
             self._data = None
@@ -40,7 +48,6 @@ class Page:
     def is_dirty(self, is_loaded):
         self.__is_loaded = is_loaded
 
-
     def load(self, data, num_records=None, is_dirty=None, force=False):
         with self.write_latch:
             if self.is_loaded and not force:
@@ -57,19 +64,23 @@ class Page:
 
             return self
 
+    @with_protection
     def unload(self):
         with self.write_latch:
             self._data = None
             self.is_loaded = False
     
+    @with_protection
     def has_capacity(self):
         with self.num_records_lock:
             return self.num_records < (CELLS_PER_PAGE)
 
+    @with_protection
     def get_num_records(self):
         with self.num_records_lock:
             return self.num_records
 
+    @with_protection
     def write(self, value):
         '''
             Writes bytes to the page
@@ -95,6 +106,7 @@ class Page:
             self.is_dirty = True
         return record_num
 
+    @with_protection
     def write_to_cell(self, value, cell_idx, increment=False):
         '''
             Writes bytes to the page at specific cell
@@ -118,6 +130,7 @@ class Page:
 
         return self.num_records
 
+    @with_protection
     def write_tps(self, tid):
         bytes_to_write = tid.to_bytes(CELL_SIZE_BYTES,'little')
         start = 0
@@ -127,9 +140,11 @@ class Page:
             self._data[start:end] = bytes_to_write
             self.is_dirty = True
 
+    @with_protection
     def read_tps(self) -> int:
         return int_from_bytes(bytes(self._data[0:CELL_SIZE_BYTES]))
 
+    @with_protection
     def read(self, cellIndex):
         '''
             Reads bytes from page, returning a bytearray
@@ -140,7 +155,7 @@ class Page:
         start = (cellIndex + 1) * CELL_SIZE_BYTES
         end = start + CELL_SIZE_BYTES
         return bytes(self._data[start:end])
-
+    @with_protection
     def copy(self):
         with self.write_latch:
             copy = Page()

@@ -134,21 +134,21 @@ class BufferPool:
             page_key, page_to_pop = page
             hashed = self.hash(page_key, len(self.load_locks))
             # lock = self.pop_locks[hashed]
-            lock = page_to_pop.disk_latch
-            with lock:
-                if self.pins[page] > 0:
-                    raise Exception("Trying to remove page taht is pinned")
+            with page_to_pop.pop_latch:
+                with page_to_pop.disk_latch:
+                    if self.pins[page] > 0:
+                        raise Exception("Trying to remove page taht is pinned")
 
-                if self.merge_pins[page_key] == 1:
-                    logging.debug("%s: (%s) wanted to unload page pid: %s but ", threading.get_ident(), "_pop_page", page_key)
-                    self.loaded_off_pool.append((page_key, page_to_pop))
-                else:
-                    if page_to_pop.is_dirty:
-                        self._write_to_disk(page_key, page_to_pop)
+                    if self.merge_pins[page_key] == 1:
+                        logging.debug("%s: (%s) wanted to unload page pid: %s but ", threading.get_ident(), "_pop_page", page_key)
+                        self.loaded_off_pool.append((page_key, page_to_pop))
+                    else:
+                        if page_to_pop.is_dirty:
+                            self._write_to_disk(page_key, page_to_pop)
 
-                    logging.debug("%s: (%s) unloading page pid: %s", threading.get_ident(), "_pop_page", page_key)
-                    page_to_pop.unload()
-                    logging.debug("%s: (%s) unloaded page pid: %s", threading.get_ident(), "_pop_page", page_key)
+                        logging.debug("%s: (%s) unloading page pid: %s", threading.get_ident(), "_pop_page", page_key)
+                        page_to_pop.unload()
+                        logging.debug("%s: (%s) unloaded page pid: %s", threading.get_ident(), "_pop_page", page_key)
 
     def write_new_page_range(self, page_range, num):
         self.disk.write_page_range(page_range, num, self.table.name)
@@ -179,8 +179,7 @@ class BufferPool:
         logging.debug("{}: {} {} {}".format(threading.get_ident(), "bp.pin", page_key, self.pins[page_key]))
 
     def unpin(self, page_key):
-        if self.pins[page_key] != 0:
-            self.pins[page_key] -= 1
+        self.pins[page_key] -= 1
 
         logging.debug("{}: {} {} {}".format(threading.get_ident(), "bp.unpin", page_key, self.pins[page_key]))
 
