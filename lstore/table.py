@@ -373,9 +373,9 @@ class Table:
         self.update_indices(tail_schema_encoding_binary, update_data, base_rid)
         # release_all(locks)
 
-        self.updates_since_merge += 1
-        if self.updates_since_merge > NUM_UPDATES_TRIGGER_MERGE:
-            self.schedule_merge()
+        # self.updates_since_merge += 1
+        # if self.updates_since_merge > NUM_UPDATES_TRIGGER_MERGE:
+        #     self.schedule_merge()
 
         return True
 
