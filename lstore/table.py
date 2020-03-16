@@ -228,7 +228,7 @@ class Table:
 
         # Indirection
         # indirection_page.write(rid_in_bytes)
-        indirection_page.write_to_cell(rid_in_bytes, indirection_pid, increment=True)
+        indirection_page.write_to_cell(rid_in_bytes, indirection_pid[0], increment=True)
 
         # Timestamp
         millisec = int(round(time.time()*1000))
