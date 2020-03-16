@@ -212,11 +212,11 @@ class Table:
         # ORDER OF THESE LINES MATTER
         with self.get_open_bp_lock:
             self.num_rows += 1
-            indirection_pid, indirection_page = self.get_open_base_page(INDIRECTION_COLUMN)
-            rid_pid, rid_page = self.get_open_base_page(RID_COLUMN)
-            time_pid, time_page = self.get_open_base_page(TIMESTAMP_COLUMN)
-            schema_pid, schema_page = self.get_open_base_page(SCHEMA_ENCODING_COLUMN)
-            column_pids_and_pages = [self.get_open_base_page(START_USER_DATA_COLUMN + i) for i in range(self.num_columns)]
+            indirection_pid, indirection_page = self.get_open_base_page(INDIRECTION_COLUMN, self.num_rows)
+            rid_pid, rid_page = self.get_open_base_page(RID_COLUMN, self.num_rows)
+            time_pid, time_page = self.get_open_base_page(TIMESTAMP_COLUMN, self.num_rows)
+            schema_pid, schema_page = self.get_open_base_page(SCHEMA_ENCODING_COLUMN, self.num_rows)
+            column_pids_and_pages = [self.get_open_base_page(START_USER_DATA_COLUMN + i, self.num_rows) for i in range(self.num_columns)]
 
         # RID
         with self.rid_latch:
