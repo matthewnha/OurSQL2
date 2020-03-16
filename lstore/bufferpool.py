@@ -67,7 +67,7 @@ class BufferPool:
 
         hashed = self.hash(page_key, len(self.load_locks))
         # lock = self.pop_locks[hashed]
-        lock = self.page.pop_latch
+        lock = page.pop_latch
 
         with lock:
             logging.debug("%s: (%s) start: %s", threading.get_ident(), "get_page", pid)
@@ -90,7 +90,7 @@ class BufferPool:
         else:
             hashed = self.hash(page_key, len(self.load_locks))
             # lock = self.pop_locks[hashed]
-            lock = self.page.pop_latch
+            lock = page.pop_latch
 
         with (lock if lock is not None else none_context()):
             if pin:
