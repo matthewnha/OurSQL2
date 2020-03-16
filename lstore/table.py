@@ -159,8 +159,6 @@ class Table:
             except IndexError:
                 page_range = PageRange()
                 index = len(self.page_ranges)
-                if index != page_range_idx:
-                    raise Exception("Created index does not match intended")
                 self.page_ranges.append(page_range)
                 self.bp.write_new_page_range(page_range, index)
 
@@ -373,9 +371,9 @@ class Table:
         self.update_indices(tail_schema_encoding_binary, update_data, base_rid)
         # release_all(locks)
 
-        # self.updates_since_merge += 1
-        # if self.updates_since_merge > NUM_UPDATES_TRIGGER_MERGE:
-        #     self.schedule_merge()
+        self.updates_since_merge += 1
+        if self.updates_since_merge > NUM_UPDATES_TRIGGER_MERGE:
+            self.schedule_merge()
 
         return True
 
@@ -637,4 +635,3 @@ class Table:
 
     def __merge(self):
         pass
-
