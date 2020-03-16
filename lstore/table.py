@@ -126,9 +126,9 @@ class Table:
         self.bp.unpin((pid[1], pid[2]))
         return read
 
-    def get_open_base_page(self, col_idx):
+    def get_open_base_page(self, col_idx, new_row_num):
         # how many pages for this column exists
-        num_col_pages = ceil(self.num_rows / CELLS_PER_PAGE)
+        num_col_pages = ceil((new_row_num - 1) / CELLS_PER_PAGE)
 
         # index of the last used page in respect to all pages across all page ranges
         prev_outer_page_idx = col_idx + max(0, num_col_pages - 1) * self.num_total_cols
@@ -140,7 +140,7 @@ class Table:
         prev_inner_page_idx = get_inner_index_from_outer_index(prev_outer_page_idx, PAGE_RANGE_MAX_BASE_PAGES)
 
         # index of cell within page
-        mod = self.num_rows % CELLS_PER_PAGE
+        mod = (new_row_num - 1) % CELLS_PER_PAGE
         max_cell_index = CELLS_PER_PAGE - 1
         prev_cell_idx = max_cell_index if (0 == mod) else (mod - 1)
 
@@ -148,7 +148,7 @@ class Table:
             # Go to next col page
 
             # New cell's page index in respect to all pages
-            outer_page_idx = col_idx if 0 == self.num_rows else prev_outer_page_idx + self.num_total_cols
+            outer_page_idx = col_idx if 0 == (new_row_num - 1) else prev_outer_page_idx + self.num_total_cols
 
             # New cell's page range index
             page_range_idx = floor(outer_page_idx / PAGE_RANGE_MAX_BASE_PAGES)
@@ -185,7 +185,7 @@ class Table:
 
             page = page_range.get_page(inner_page_idx)
             if (None == page):
-                raise Exception('No page returned', cell_idx, inner_page_idx, page_range_idx, outer_page_idx, self.num_rows, col_idx)
+                raise Exception('No page returned', cell_idx, inner_page_idx, page_range_idx, outer_page_idx, (new_row_num - 1), col_idx)
             
         pid = [cell_idx, inner_page_idx, page_range_idx]
 
@@ -210,12 +210,12 @@ class Table:
         # with self.merge_lock:
         # ORDER OF THESE LINES MATTER
         with self.get_open_bp_lock:
-            indirection_pid, indirection_page = self.get_open_base_page(INDIRECTION_COLUMN)
-            rid_pid, rid_page = self.get_open_base_page(RID_COLUMN)
-            time_pid, time_page = self.get_open_base_page(TIMESTAMP_COLUMN)
-            schema_pid, schema_page = self.get_open_base_page(SCHEMA_ENCODING_COLUMN)
-            column_pids_and_pages = [self.get_open_base_page(START_USER_DATA_COLUMN + i) for i in range(self.num_columns)]
             self.num_rows += 1
+            indirection_pid, indirection_page = self.get_open_base_page(INDIRECTION_COLUMN, self.num_rows)
+            rid_pid, rid_page = self.get_open_base_page(RID_COLUMN, self.num_rows)
+            time_pid, time_page = self.get_open_base_page(TIMESTAMP_COLUMN, self.num_rows)
+            schema_pid, schema_page = self.get_open_base_page(SCHEMA_ENCODING_COLUMN, self.num_rows)
+            column_pids_and_pages = [self.get_open_base_page(START_USER_DATA_COLUMN + i, self.num_rows) for i in range(self.num_columns)]
 
         # RID
         with self.rid_latch:
@@ -223,20 +223,24 @@ class Table:
             
         rid = self.prev_rid
         rid_in_bytes = int_to_bytes(rid)
-        num_records_in_page = rid_page.write(rid_in_bytes)
+        # num_records_in_page = rid_page.write(rid_in_bytes)
+        rid_page.write_to_cell(rid_in_bytes, rid_pid[0], increment=True)
 
         # Indirection
-        indirection_page.write(rid_in_bytes)
+        # indirection_page.write(rid_in_bytes)
+        indirection_page.write_to_cell(rid_in_bytes, indirection_pid, increment=True)
 
         # Timestamp
         millisec = int(round(time.time()*1000))
         bytes_to_write = int_to_bytes(millisec)
-        cell_dex = time_page.write(bytes_to_write)
+        # cell_dex = time_page.write(bytes_to_write)
+        time_page.write_to_cell(bytes_to_write, time_pid[0], increment=True)
 
         # Schema Encoding
         schema_encoding = 0
         bytes_to_write = int_to_bytes(schema_encoding)
-        schema_page.write(bytes_to_write)
+        # schema_page.write(bytes_to_write)
+        schema_page.write_to_cell(bytes_to_write, schema_pid[0], increment=True)
         
         self.bp.unpin((indirection_pid[1], indirection_pid[2]))
         self.bp.unpin((rid_pid[1], rid_pid[2]))
@@ -247,7 +251,8 @@ class Table:
         for i, col_pid_and_page in enumerate(column_pids_and_pages):
             col_pid, col_page = col_pid_and_page
             bytes_to_write = int_to_bytes(columns_data[i])
-            col_page.write(bytes_to_write)
+            # col_page.write(bytes_to_write)
+            col_page.write_to_cell(bytes_to_write, col_pid[0], increment=True)
             self.bp.unpin((col_pid[1], col_pid[2]))
 
             if self.indices.is_indexed(i):
