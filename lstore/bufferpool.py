@@ -24,7 +24,6 @@ class BufferPool:
         self.page_index = {}
         self.loaded_off_pool = []
 
-        # self.least_recently_used = []
         self.table = table # type: Table
 
         self.pop_locks = [threading.Lock() for _ in range(500)]
@@ -134,10 +133,9 @@ class BufferPool:
             hashed = self.hash(page_key, len(self.load_locks))
             lock = self.pop_locks[hashed]
             with lock:
-                if page in self.pins and self.pins[page] > 0:
+                if self.pins[page] > 0:
                     raise Exception("Trying to remove page taht is pinned")
 
-                # if self.table.merging == 0 and (page_key not in self.pins or self.pins[page_key] == 0):
                 if self.merge_pins[page_key] == 1:
                     logging.debug("%s: (%s) wanted to unload page pid: %s but ", threading.get_ident(), "_pop_page", page_key)
                     self.loaded_off_pool.append((page_key, page_to_pop))
@@ -171,26 +169,8 @@ class BufferPool:
         self.disk.write_page(page, page_key, self.table, self.table.name)
         page.is_dirty = False
 
-    def drop_page(self, page_key):
-        try:
-            index = self.page_index[page_key]
-        except KeyError:
-            logging.error("Not in pool")
-
-        if self.pins[page_key] == 0:
-            # del self.pages[page_key] Need to do this
-            del self.pins[page_key]
-            self.num_pool_pages -= 1
-        else:
-            raise Exception("Cannot drop, Page is Pinned")
-
     def pin(self, page_key):
-    
-
-        if page_key in self.pins:
-            self.pins[page_key] += 1
-        else:
-            self.pins[page_key] = 1
+        self.pins[page_key] += 1
 
         logging.debug("{}: {} {} {}".format(threading.get_ident(), "bp.pin", page_key, self.pins[page_key]))
 
@@ -227,7 +207,8 @@ class BufferPool:
                 logging.debug("%s: Was about to flush a page that was pinned", threading.get_ident())
                 continue
 
-            with WriteLatch(page_to_pop.latch):
+            # with WriteLatch(page_to_pop.latch):
+            with page_to_pop.latch:
                 if page_to_pop.is_dirty:
                     self._write_to_disk(page_key, page_to_pop)
 

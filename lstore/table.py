@@ -23,6 +23,7 @@ class MetaRecord:
         self.rid = rid
         self.key = key
         self.columns = columns
+        self.latch = threading.Lock()
 
     def copy(self):
         copy = MetaRecord(self.rid, self.key, self.columns)
@@ -273,74 +274,73 @@ class Table:
         # base_rid = self.indices.locate(self.key_col, key)
 
 
+
+        ## Getting data from base record ============
+        base_record = self.page_directory[base_rid] # type: MetaRecord
+
         ## Acquire latch on base record
-        with ReadLatch(lm_r.get(base_rid)):
+        # with base_record.latch:
+        tail_schema_encoding = 0
 
-            ## Getting data from base record ============
+        for i,value in enumerate(update_data[::-1]):
+            if value is None:
+                tail_schema_encoding += 0
+            else:
+                tail_schema_encoding += 2**i
 
-            base_record = self.page_directory[base_rid] # type: MetaRecord
-            tail_schema_encoding = 0
+        if 0 == tail_schema_encoding:
 
-            for i,value in enumerate(update_data[::-1]):
-                if value is None:
-                    tail_schema_encoding += 0
-                else:
-                    tail_schema_encoding += 2**i
+            # Release locks and return
+            # release_all(locks)
+            return False
 
-            if 0 == tail_schema_encoding:
+        # Get base record indirection
+        base_indir_page_pid = base_record.columns[INDIRECTION_COLUMN]
+        base_indir_page = self.get_page(base_indir_page_pid) # type: Page
+        base_indir_cell_idx, bip, bipr = base_indir_page_pid
+        prev_update_rid_bytes = base_indir_page.read(base_indir_cell_idx)
+        self.bp.unpin((bip, bipr))
 
-                # Release locks and return
-                # release_all(locks)
-                return False
-
-            # Get base record indirection
-            base_indir_page_pid = base_record.columns[INDIRECTION_COLUMN]
-            base_indir_page = self.get_page(base_indir_page_pid) # type: Page
-            base_indir_cell_idx, bip, bipr = base_indir_page_pid
-            prev_update_rid_bytes = base_indir_page.read(base_indir_cell_idx)
-            self.bp.unpin((bip, bipr))
-
-            # Base record encoding
-            base_enc_page_pid = base_record.columns[SCHEMA_ENCODING_COLUMN]
-            base_enc_page = self.get_page(base_enc_page_pid) # type: Page
-            base_enc_cell_idx, bep, bepr = base_enc_page_pid
-            self.bp.unpin((bep, bepr))
+        # Base record encoding
+        base_enc_page_pid = base_record.columns[SCHEMA_ENCODING_COLUMN]
+        base_enc_page = self.get_page(base_enc_page_pid) # type: Page
+        base_enc_cell_idx, bep, bepr = base_enc_page_pid
+        self.bp.unpin((bep, bepr))
 
 
-            ## Meta columns for tail page ==========
+        ## Meta columns for tail page ==========
 
-            indirection_pid = self.write_tail_column(base_record, INDIRECTION_COLUMN, prev_update_rid_bytes)
+        indirection_pid = self.write_tail_column(base_record, INDIRECTION_COLUMN, prev_update_rid_bytes)
 
-            with self.tid_latch:
-                self.prev_tid -= 1
-            new_rid = self.prev_tid
-            rid_in_bytes = int_to_bytes(new_rid)
-            rid_pid = self.write_tail_column(base_record, RID_COLUMN, rid_in_bytes)
-            
-            millisec = int(round(time.time()*1000))
-            bytes_to_write = int_to_bytes(millisec)
-            time_pid = self.write_tail_column(base_record, TIMESTAMP_COLUMN, bytes_to_write)
-            
-            bytes_to_write = int_to_bytes(tail_schema_encoding)
-            schema_pid = self.write_tail_column(base_record, SCHEMA_ENCODING_COLUMN, bytes_to_write)
+        with self.tid_latch:
+            self.prev_tid -= 1
+        new_rid = self.prev_tid
+        rid_in_bytes = int_to_bytes(new_rid)
+        rid_pid = self.write_tail_column(base_record, RID_COLUMN, rid_in_bytes)
+        
+        millisec = int(round(time.time()*1000))
+        bytes_to_write = int_to_bytes(millisec)
+        time_pid = self.write_tail_column(base_record, TIMESTAMP_COLUMN, bytes_to_write)
+        
+        bytes_to_write = int_to_bytes(tail_schema_encoding)
+        schema_pid = self.write_tail_column(base_record, SCHEMA_ENCODING_COLUMN, bytes_to_write)
 
-            meta_columns = [indirection_pid, rid_pid, time_pid, schema_pid]
+        meta_columns = [indirection_pid, rid_pid, time_pid, schema_pid]
 
 
-            ## Data Columns for tail page ==========
-            data_columns = []
-            tail_schema_encoding_binary = bin(tail_schema_encoding)[2:].zfill(self.num_columns)
+        ## Data Columns for tail page ==========
+        data_columns = []
+        tail_schema_encoding_binary = bin(tail_schema_encoding)[2:].zfill(self.num_columns)
 
-            for i, pid in enumerate(update_data):
-                if '0' == tail_schema_encoding_binary[i]:
-                    data_columns.append(None)
-                    continue
+        for i, pid in enumerate(update_data):
+            if '0' == tail_schema_encoding_binary[i]:
+                data_columns.append(None)
+                continue
 
-                col_idx = START_USER_DATA_COLUMN + i
-                bytes_to_write = int_to_bytes(update_data[i])
-                pid = self.write_tail_column(base_record, col_idx, bytes_to_write)
-                data_columns.append(pid)
-
+            col_idx = START_USER_DATA_COLUMN + i
+            bytes_to_write = int_to_bytes(update_data[i])
+            pid = self.write_tail_column(base_record, col_idx, bytes_to_write)
+            data_columns.append(pid)
 
         ## Create Tail Record
 

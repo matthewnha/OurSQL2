@@ -14,7 +14,8 @@ class Page:
         self.num_records_lock = threading.Lock()
         # self.indexes = None
         # self.write_lock = threading.Lock()
-        self.latch = pl.get(process_time())
+        # self.latch = pl.get(process_time())
+        self.latch = threading.Lock()
 
         if is_importing:
             self._data = None

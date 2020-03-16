@@ -156,7 +156,8 @@ class MergeJob:
             og_page = self.table.get_page(pid)
 
             # Make sure the page is loaded first
-            with WriteLatch(og_page.latch):
+            # with WriteLatch(og_page.latch):
+            with og_page.latch:
                 if not og_page.is_loaded:
                     raise Exception("The original page isn't loaded")
                 data = new_page._data
