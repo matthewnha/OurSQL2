@@ -119,9 +119,10 @@ class BufferPool:
 
             page_key, page_to_pop = self.pages[i]
 
-            if self.pins[page_key] <= 0:
-                pages_to_remove.append(self.pages.pop(i))
-                self.num_pool_pages -= 1
+            with page_to_pop.pop_latch:
+                if self.pins[page_key] <= 0:
+                    pages_to_remove.append(self.pages.pop(i))
+                    self.num_pool_pages -= 1
 
             if i >= self.num_pool_pages:
                 i = 0
