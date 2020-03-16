@@ -13,7 +13,7 @@ import logging
 # logging.basicConfig(level=logging.DEBUG)
 
 db = Database()
-db.open('~/OurSQL')
+db.open('~/OurSQL2')
 grades_table = db.create_table('Grades', 5, 0)
 
 keys = []
