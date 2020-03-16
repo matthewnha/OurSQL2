@@ -1,11 +1,8 @@
 from config import *
 from util import *
-from latch import *
 from time import process_time
 
 import threading
-
-pl = LatchManager()
 
 class Page:
 

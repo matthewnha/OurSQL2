@@ -2,7 +2,6 @@ from table import *
 from config import *
 from page import Page
 from util import *
-from latch import *
 
 class MergeJob:
 
