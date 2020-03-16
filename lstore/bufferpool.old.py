@@ -226,7 +226,8 @@ class BufferPool:
                 logging.debug("%s: Was about to flush a page that was pinned", threading.get_ident())
                 continue
 
-            with WriteLatch(page_to_pop.latch):
+            # with WriteLatch(page_to_pop.latch):
+            with page_to_pop.latch:
                 if page_to_pop.is_dirty:
                     self._write_to_disk(page_key, page_to_pop)
 
