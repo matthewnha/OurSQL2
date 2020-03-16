@@ -144,24 +144,3 @@ class LockManager:
             self.create(id)
         
         return self.resources[id]
-
-# def acquire_all(locks):
-#     acquired = []
-
-#     for lock in locks:
-#         is_acquired = lock.acquire(False)
-
-#         if not is_acquired:
-#             for to_release in acquired:
-#                 to_release.release()
-
-#             # print('Couldn\'t acquire all locks')
-#             return False
-
-#         acquired.insert(0, lock)
-
-#     return acquired
-
-# def release_all(locks):
-#     for lock in locks:
-#         lock.release()

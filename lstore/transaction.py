@@ -3,7 +3,7 @@ from index import Index
 import time
 import threading
 import util
-from sxlock import *
+from lock import *
 
 
 gathering_lock = threading.Lock()

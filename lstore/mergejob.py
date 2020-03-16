@@ -23,22 +23,24 @@ class MergeJob:
                 continue
 
             current_record = self.table.page_directory[rid].copy()
+            with current_record.latch:
         
-            for pid in current_record.columns:
-                cell_idx, inner_idx, range_idx = pid
+                for pid in current_record.columns:
+                    cell_idx, inner_idx, range_idx = pid
 
-                page_key = (inner_idx, range_idx)
-                if page_key not in copied_base_pages:
-                    og_page = self.table.get_page(pid)
+                    page_key = (inner_idx, range_idx)
+                    if page_key not in copied_base_pages:
+                        og_page = self.table.get_page(pid)
+                        with og_page.latch:
 
-                    self.table.bp.pin_merge(page_key)
-                    if page_key not in self.to_unpin:
-                        self.to_unpin.append(page_key)
+                            self.table.bp.pin_merge(page_key)
+                            if page_key not in self.to_unpin:
+                                self.to_unpin.append(page_key)
 
-                    copied_base_pages[(inner_idx, range_idx)] = og_page.copy()
+                            copied_base_pages[(inner_idx, range_idx)] = og_page.copy()
+                        
                     
-                
-            copied_metarecords[rid] = current_record
+                copied_metarecords[rid] = current_record
 
         return [copied_metarecords, copied_base_pages]
         
@@ -156,7 +158,6 @@ class MergeJob:
             og_page = self.table.get_page(pid)
 
             # Make sure the page is loaded first
-            # with WriteLatch(og_page.latch):
             with og_page.latch:
                 if not og_page.is_loaded:
                     raise Exception("The original page isn't loaded")
@@ -169,22 +170,12 @@ class MergeJob:
                 og_page._data = data
                 og_page.is_dirty = True
                 og_page.is_loaded = True
-                    
-                # og_page.load(new_page._data, is_dirty=True)
-            # og_page.data = new_page.data
-            # og_page.is_dirty = True
-            
-
-        # og_metacolumns  = og_record.columns[0:START_USER_DATA_COLUMN]
-        # merged_record.columns = og_metacolumns + merged_data_cols
-        # self.table.page_directory[merged_record.rid] = merged_record
 
     def run(self):
 
         self.table.merging = 1
-        
-        with self.table.merge_lock:
-            self.copied_metarecords, self.copied_base_pages = self.copy_data()
+
+        self.copied_metarecords, self.copied_base_pages = self.copy_data()
 
         self.table.merging = 2
 
@@ -240,7 +231,6 @@ class MergeJob:
         for page_key in self.to_unpin:
             self.table.bp.unpin_merge(page_key)
 
-        with self.table.merge_lock:
-            self.table.bp.flush_unpooled()
+        self.table.bp.flush_unpooled()
 
         self.table.merging = 0

@@ -1,4 +1,4 @@
-from sxlock import *
+from lock import *
 import threading
 from time import sleep
 import util
