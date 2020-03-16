@@ -66,7 +66,8 @@ class BufferPool:
         page_key = (pid[1], pid[2])
 
         hashed = self.hash(page_key, len(self.load_locks))
-        lock = self.pop_locks[hashed]
+        # lock = self.pop_locks[hashed]
+        lock = self.page.pop_latch
 
         with lock:
             logging.debug("%s: (%s) start: %s", threading.get_ident(), "get_page", pid)
@@ -88,7 +89,8 @@ class BufferPool:
             lock = None
         else:
             hashed = self.hash(page_key, len(self.load_locks))
-            lock = self.pop_locks[hashed]
+            # lock = self.pop_locks[hashed]
+            lock = self.page.pop_latch
 
         with (lock if lock is not None else none_context()):
             if pin:
@@ -204,13 +206,14 @@ class BufferPool:
             page_key, page_to_pop = self.loaded_off_pool.pop()
             logging.debug("%s: %s %s", threading.get_ident(), "considering bp.flush_unpooled", page_key)
 
-            if self.pins[page_key] > 0:
-                logging.debug("%s: Was about to flush a page that was pinned", threading.get_ident())
-                continue
 
             # with WriteLatch(page_to_pop.latch):
             # with page_to_pop.latch:
             with page_to_pop.disk_latch:
+                if self.pins[page_key] > 0:
+                    logging.debug("%s: Was about to flush a page that was pinned", threading.get_ident())
+                    continue
+
                 if page_to_pop.is_dirty:
                     self._write_to_disk(page_key, page_to_pop)
 

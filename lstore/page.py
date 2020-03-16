@@ -12,6 +12,7 @@ class Page:
         self.latch = threading.Lock()
         self.write_latch = threading.Lock()
         self.disk_latch = threading.Lock()
+        self.pop_latch = threading.Lock()
 
         if is_importing:
             self._data = None
