@@ -10,6 +10,7 @@ class Page:
         self.num_records = 0
         self.num_records_lock = threading.RLock()
         self.latch = threading.Lock()
+        self.write_latch = threading.Lock()
 
         if is_importing:
             self._data = None
@@ -36,28 +37,28 @@ class Page:
     @is_dirty.setter
     def is_dirty(self, is_loaded):
         self.__is_loaded = is_loaded
-        
-    # def set_pid(self,indexes):
-    #     self.indexes = indexes
+
 
     def load(self, data, num_records=None, is_dirty=None, force=False):
-        if self.is_loaded and not force:
+        with self.write_latch:
+            if self.is_loaded and not force:
+                return self
+
+            self.is_loaded = True
+            self._data = data
+
+            if num_records is not None:
+                self.num_records = num_records
+
+            if is_dirty is not None:
+                self.is_dirty = is_dirty
+
             return self
 
-        self.is_loaded = True
-        self._data = data
-
-        if num_records is not None:
-            self.num_records = num_records
-
-        if is_dirty is not None:
-            self.is_dirty = is_dirty
-
-        return self
-
     def unload(self):
-        self._data = None
-        self.is_loaded = False
+        with self.write_latch:
+            self._data = None
+            self.is_loaded = False
     
     def has_capacity(self):
         with self.num_records_lock:
@@ -86,8 +87,10 @@ class Page:
         if len(value) != CELL_SIZE_BYTES:
             value = int.from_bytes(value, 'little')
             value = value.to_bytes(CELL_SIZE_BYTES, 'little')
-        self._data[start:end] = value
-        self.is_dirty = True
+
+        with self.write_latch:
+            self._data[start:end] = value
+            self.is_dirty = True
         return record_num
 
     def write_to_cell(self, value, cell_idx):
@@ -112,8 +115,10 @@ class Page:
         bytes_to_write = tid.to_bytes(CELL_SIZE_BYTES,'little')
         start = 0
         end = start + CELL_SIZE_BYTES
-        self._data[start:end] = bytes_to_write
-        self.is_dirty = True
+
+        with self.write_latch:
+            self._data[start:end] = bytes_to_write
+            self.is_dirty = True
 
     def read_tps(self) -> int:
         return int_from_bytes(bytes(self._data[0:CELL_SIZE_BYTES]))
