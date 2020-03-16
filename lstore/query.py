@@ -55,7 +55,7 @@ class Query:
     """
 
     # should probably be implemented by table
-    # @with_merge_lock
+    @with_merge_lock
     def select(self, key, column, query_columns):
         return self.table.select(key, column, query_columns)
 
