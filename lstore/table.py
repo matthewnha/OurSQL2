@@ -226,24 +226,24 @@ class Table:
             
         rid = self.prev_rid
         rid_in_bytes = int_to_bytes(rid)
-        # num_records_in_page = rid_page.write(rid_in_bytes)
-        num_records_in_page = rid_page.write_to_cell(rid_in_bytes, rid_pid[0], increment=True)
+        num_records_in_page = rid_page.write(rid_in_bytes)
+        # num_records_in_page = rid_page.write_to_cell(rid_in_bytes, rid_pid[0], increment=True)
 
         # Indirection
-        # indirection_page.write(rid_in_bytes)
-        indirection_page.write_to_cell(rid_in_bytes, indirection_pid[0], increment=True)
+        indirection_page.write(rid_in_bytes)
+        # indirection_page.write_to_cell(rid_in_bytes, indirection_pid[0], increment=True)
 
         # Timestamp
         millisec = int(round(time.time()*1000))
         bytes_to_write = int_to_bytes(millisec)
-        # cell_dex = time_page.write(bytes_to_write)
-        cell_dex = time_page.write_to_cell(bytes_to_write, time_pid[0], increment=True)
+        cell_dex = time_page.write(bytes_to_write)
+        # cell_dex = time_page.write_to_cell(bytes_to_write, time_pid[0], increment=True)
 
         # Schema Encoding
         schema_encoding = 0
         bytes_to_write = int_to_bytes(schema_encoding)
-        # schema_page.write(bytes_to_write)
-        schema_page.write_to_cell(bytes_to_write, schema_pid[0], increment=True)
+        schema_page.write(bytes_to_write)
+        # schema_page.write_to_cell(bytes_to_write, schema_pid[0], increment=True)
         
         self.bp.unpin((indirection_pid[1], indirection_pid[2]))
         self.bp.unpin((rid_pid[1], rid_pid[2]))
@@ -254,8 +254,8 @@ class Table:
         for i, col_pid_and_page in enumerate(column_pids_and_pages):
             col_pid, col_page = col_pid_and_page
             bytes_to_write = int_to_bytes(columns_data[i])
-            # col_page.write(bytes_to_write)
-            col_page.write_to_cell(bytes_to_write, col_pid[0], increment=True)
+            col_page.write(bytes_to_write)
+            # col_page.write_to_cell(bytes_to_write, col_pid[0], increment=True)
             self.bp.unpin((col_pid[1], col_pid[2]))
 
             if self.indices.is_indexed(i):
