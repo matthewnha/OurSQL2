@@ -63,7 +63,7 @@ class Query:
     # Update a record with specified key and columns
     """
 
-    # @with_merge_lock
+    @with_merge_lock
     def update(self, key, *columns):
         return self.table.update_row(key, columns)
 
