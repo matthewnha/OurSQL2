@@ -218,41 +218,41 @@ class Table:
             column_pids_and_pages = [self.get_open_base_page(START_USER_DATA_COLUMN + i) for i in range(self.num_columns)]
             self.num_rows += 1
 
-        # RID
-        with self.rid_latch:
-            self.prev_rid += 1
+            # RID
+            with self.rid_latch:
+                self.prev_rid += 1
+                
+            rid = self.prev_rid
+            rid_in_bytes = int_to_bytes(rid)
+            num_records_in_page = rid_page.write(rid_in_bytes)
+
+            # Indirection
+            indirection_page.write(rid_in_bytes)
+
+            # Timestamp
+            millisec = int(round(time.time()*1000))
+            bytes_to_write = int_to_bytes(millisec)
+            cell_dex = time_page.write(bytes_to_write)
+
+            # Schema Encoding
+            schema_encoding = 0
+            bytes_to_write = int_to_bytes(schema_encoding)
+            schema_page.write(bytes_to_write)
             
-        rid = self.prev_rid
-        rid_in_bytes = int_to_bytes(rid)
-        num_records_in_page = rid_page.write(rid_in_bytes)
+            self.bp.unpin((indirection_pid[1], indirection_pid[2]))
+            self.bp.unpin((rid_pid[1], rid_pid[2]))
+            self.bp.unpin((time_pid[1], time_pid[2]))
+            self.bp.unpin((schema_pid[1], schema_pid[2]))
 
-        # Indirection
-        indirection_page.write(rid_in_bytes)
+            # User Data
+            for i, col_pid_and_page in enumerate(column_pids_and_pages):
+                col_pid, col_page = col_pid_and_page
+                bytes_to_write = int_to_bytes(columns_data[i])
+                col_page.write(bytes_to_write)
+                self.bp.unpin((col_pid[1], col_pid[2]))
 
-        # Timestamp
-        millisec = int(round(time.time()*1000))
-        bytes_to_write = int_to_bytes(millisec)
-        cell_dex = time_page.write(bytes_to_write)
-
-        # Schema Encoding
-        schema_encoding = 0
-        bytes_to_write = int_to_bytes(schema_encoding)
-        schema_page.write(bytes_to_write)
-        
-        self.bp.unpin((indirection_pid[1], indirection_pid[2]))
-        self.bp.unpin((rid_pid[1], rid_pid[2]))
-        self.bp.unpin((time_pid[1], time_pid[2]))
-        self.bp.unpin((schema_pid[1], schema_pid[2]))
-
-        # User Data
-        for i, col_pid_and_page in enumerate(column_pids_and_pages):
-            col_pid, col_page = col_pid_and_page
-            bytes_to_write = int_to_bytes(columns_data[i])
-            col_page.write(bytes_to_write)
-            self.bp.unpin((col_pid[1], col_pid[2]))
-
-            if self.indices.is_indexed(i):
-                self.indices.insert(columns_data[i], rid, i)
+                if self.indices.is_indexed(i):
+                    self.indices.insert(columns_data[i], rid, i)
 
         sys_cols = [indirection_pid, rid_pid, time_pid, schema_pid]
         data_cols = [pid for pid, _ in column_pids_and_pages]
