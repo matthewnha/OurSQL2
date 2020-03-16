@@ -94,13 +94,17 @@ class Page:
             self.is_dirty = True
         return record_num
 
-    def write_to_cell(self, value, cell_idx):
+    def write_to_cell(self, value, cell_idx, increment=False):
         '''
             Writes bytes to the page at specific cell
             Only write to cells that you KNOW have been written to!
 
             value: Must be bytes of the specified CELLS_PER_PAGE size
         '''
+
+        if increment:
+            with self.num_records_lock:
+                self.num_records += 1
 
         start = (cell_idx + 1) * CELL_SIZE_BYTES
         end = start + CELL_SIZE_BYTES
