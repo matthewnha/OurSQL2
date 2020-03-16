@@ -8,7 +8,7 @@ class Page:
 
     def __init__(self, is_importing = False):
         self.num_records = 0
-        self.num_records_lock = threading.Lock()
+        self.num_records_lock = threading.RLock()
         self.latch = threading.Lock()
 
         if is_importing:
@@ -60,10 +60,12 @@ class Page:
         self.is_loaded = False
     
     def has_capacity(self):
-        return self.num_records < (CELLS_PER_PAGE)
+        with self.num_records_lock:
+            return self.num_records < (CELLS_PER_PAGE)
 
     def get_num_records(self):
-        return self.num_records
+        with self.num_records_lock:
+            return self.num_records
 
     def write(self, value):
         '''
@@ -71,10 +73,11 @@ class Page:
 
             value: Must be bytes of the specified CELLS_PER_PAGE size
         '''
-        if not self.has_capacity():
-            raise Exception('page is full')
 
         with self.num_records_lock:
+            if not self.has_capacity():
+                raise Exception('page is full')
+
             start = (self.num_records + 1) * CELL_SIZE_BYTES
             self.num_records += 1
             record_num = self.num_records # the number of this particular record (index+1)
