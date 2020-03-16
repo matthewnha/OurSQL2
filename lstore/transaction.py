@@ -52,7 +52,7 @@ class Transaction:
         
         acquire_resp = util.acquire_all(self.locks)
         if acquire_resp is False:
-            print("Couldn't acquire all locks", threading.currentThread())
+            # print("Couldn't acquire all locks", threading.currentThread())
             return self.abort()
 
         self.acquired_locks = acquire_resp

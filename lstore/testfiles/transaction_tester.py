@@ -28,7 +28,7 @@ for i in range(0, 10000):
     records[key] = [key, 0, 0, 0, 0]
     q = Query(grades_table)
     q.insert(*records[key])
-    print("Insert", i)
+    # print("Insert", i)
 end = process_time()
 
 print("Created 10,000 records in", end-start)
