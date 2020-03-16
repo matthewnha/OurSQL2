@@ -72,6 +72,7 @@ class Table:
 
         self.get_open_bp_lock = threading.Lock()
         self.tail_col_lock = threading.Lock()
+        self.update_row_lock = threading.Lock()
         self.merge_schedule_lock = threading.Lock()
 
 
@@ -272,110 +273,107 @@ class Table:
         return True
 
     def update_row(self, key, update_data):
-        base_rid = self.key_index[key]
-        # base_rid = self.indices.locate(self.key_col, key)
+        with self.update_row_lock:
+            base_rid = self.key_index[key]
 
 
+            ## Getting data from base record ============
+            base_record = self.page_directory[base_rid] # type: MetaRecord
 
-        ## Getting data from base record ============
-        base_record = self.page_directory[base_rid] # type: MetaRecord
+            tail_schema_encoding = 0
 
-        ## Acquire latch on base record
-        # with base_record.latch:
-        tail_schema_encoding = 0
+            for i,value in enumerate(update_data[::-1]):
+                if value is None:
+                    tail_schema_encoding += 0
+                else:
+                    tail_schema_encoding += 2**i
 
-        for i,value in enumerate(update_data[::-1]):
-            if value is None:
-                tail_schema_encoding += 0
-            else:
-                tail_schema_encoding += 2**i
+            if 0 == tail_schema_encoding:
 
-        if 0 == tail_schema_encoding:
+                # Release locks and return
+                # release_all(locks)
+                return False
 
-            # Release locks and return
+            # Get base record indirection
+            base_indir_page_pid = base_record.columns[INDIRECTION_COLUMN]
+            base_indir_page = self.get_page(base_indir_page_pid) # type: Page
+            base_indir_cell_idx, bip, bipr = base_indir_page_pid
+            prev_update_rid_bytes = base_indir_page.read(base_indir_cell_idx)
+            self.bp.unpin((bip, bipr))
+
+            # Base record encoding
+            base_enc_page_pid = base_record.columns[SCHEMA_ENCODING_COLUMN]
+            base_enc_page = self.get_page(base_enc_page_pid) # type: Page
+            base_enc_cell_idx, bep, bepr = base_enc_page_pid
+            self.bp.unpin((bep, bepr))
+
+
+            ## Meta columns for tail page ==========
+
+            indirection_pid = self.write_tail_column(base_record, INDIRECTION_COLUMN, prev_update_rid_bytes)
+
+            with self.tid_latch:
+                self.prev_tid -= 1
+            new_rid = self.prev_tid
+            rid_in_bytes = int_to_bytes(new_rid)
+            rid_pid = self.write_tail_column(base_record, RID_COLUMN, rid_in_bytes)
+            
+            millisec = int(round(time.time()*1000))
+            bytes_to_write = int_to_bytes(millisec)
+            time_pid = self.write_tail_column(base_record, TIMESTAMP_COLUMN, bytes_to_write)
+            
+            bytes_to_write = int_to_bytes(tail_schema_encoding)
+            schema_pid = self.write_tail_column(base_record, SCHEMA_ENCODING_COLUMN, bytes_to_write)
+
+            meta_columns = [indirection_pid, rid_pid, time_pid, schema_pid]
+
+
+            ## Data Columns for tail page ==========
+            data_columns = []
+            tail_schema_encoding_binary = bin(tail_schema_encoding)[2:].zfill(self.num_columns)
+
+            for i, pid in enumerate(update_data):
+                if '0' == tail_schema_encoding_binary[i]:
+                    data_columns.append(None)
+                    continue
+
+                col_idx = START_USER_DATA_COLUMN + i
+                bytes_to_write = int_to_bytes(update_data[i])
+                pid = self.write_tail_column(base_record, col_idx, bytes_to_write)
+                data_columns.append(pid)
+
+            ## Create Tail Record
+
+            tail_record = MetaRecord(new_rid, key, meta_columns + data_columns)
+            self.page_directory[new_rid] = tail_record
+
+
+            ## Update base record indirection and schema
+
+            new_rid_bytes = int_to_bytes(new_rid)
+
+            if not base_indir_page.is_loaded:
+                base_indir_page = self.get_page(base_indir_page_pid)
+
+            base_indir_page.write_to_cell(new_rid_bytes, base_indir_cell_idx)
+
+            if not base_enc_page.is_loaded:
+                base_enc_page = self.get_page(base_enc_page_pid)
+
+            base_schema_enc_bytes = base_enc_page.read(base_enc_cell_idx)
+            base_schema_enc_int = int_from_bytes(base_schema_enc_bytes)
+            new_base_enc = base_schema_enc_int | tail_schema_encoding
+            bytes_to_write = int_to_bytes(new_base_enc)
+            base_enc_page.write_to_cell(bytes_to_write, base_enc_cell_idx)
+
+            self.update_indices(tail_schema_encoding_binary, update_data, base_rid)
             # release_all(locks)
-            return False
 
-        # Get base record indirection
-        base_indir_page_pid = base_record.columns[INDIRECTION_COLUMN]
-        base_indir_page = self.get_page(base_indir_page_pid) # type: Page
-        base_indir_cell_idx, bip, bipr = base_indir_page_pid
-        prev_update_rid_bytes = base_indir_page.read(base_indir_cell_idx)
-        self.bp.unpin((bip, bipr))
+            # self.updates_since_merge += 1
+            # if self.updates_since_merge > NUM_UPDATES_TRIGGER_MERGE:
+            #     self.schedule_merge()
 
-        # Base record encoding
-        base_enc_page_pid = base_record.columns[SCHEMA_ENCODING_COLUMN]
-        base_enc_page = self.get_page(base_enc_page_pid) # type: Page
-        base_enc_cell_idx, bep, bepr = base_enc_page_pid
-        self.bp.unpin((bep, bepr))
-
-
-        ## Meta columns for tail page ==========
-
-        indirection_pid = self.write_tail_column(base_record, INDIRECTION_COLUMN, prev_update_rid_bytes)
-
-        with self.tid_latch:
-            self.prev_tid -= 1
-        new_rid = self.prev_tid
-        rid_in_bytes = int_to_bytes(new_rid)
-        rid_pid = self.write_tail_column(base_record, RID_COLUMN, rid_in_bytes)
-        
-        millisec = int(round(time.time()*1000))
-        bytes_to_write = int_to_bytes(millisec)
-        time_pid = self.write_tail_column(base_record, TIMESTAMP_COLUMN, bytes_to_write)
-        
-        bytes_to_write = int_to_bytes(tail_schema_encoding)
-        schema_pid = self.write_tail_column(base_record, SCHEMA_ENCODING_COLUMN, bytes_to_write)
-
-        meta_columns = [indirection_pid, rid_pid, time_pid, schema_pid]
-
-
-        ## Data Columns for tail page ==========
-        data_columns = []
-        tail_schema_encoding_binary = bin(tail_schema_encoding)[2:].zfill(self.num_columns)
-
-        for i, pid in enumerate(update_data):
-            if '0' == tail_schema_encoding_binary[i]:
-                data_columns.append(None)
-                continue
-
-            col_idx = START_USER_DATA_COLUMN + i
-            bytes_to_write = int_to_bytes(update_data[i])
-            pid = self.write_tail_column(base_record, col_idx, bytes_to_write)
-            data_columns.append(pid)
-
-        ## Create Tail Record
-
-        tail_record = MetaRecord(new_rid, key, meta_columns + data_columns)
-        self.page_directory[new_rid] = tail_record
-
-
-        ## Update base record indirection and schema
-
-        new_rid_bytes = int_to_bytes(new_rid)
-
-        if not base_indir_page.is_loaded:
-            base_indir_page = self.get_page(base_indir_page_pid)
-
-        base_indir_page.write_to_cell(new_rid_bytes, base_indir_cell_idx)
-
-        if not base_enc_page.is_loaded:
-            base_enc_page = self.get_page(base_enc_page_pid)
-
-        base_schema_enc_bytes = base_enc_page.read(base_enc_cell_idx)
-        base_schema_enc_int = int_from_bytes(base_schema_enc_bytes)
-        new_base_enc = base_schema_enc_int | tail_schema_encoding
-        bytes_to_write = int_to_bytes(new_base_enc)
-        base_enc_page.write_to_cell(bytes_to_write, base_enc_cell_idx)
-
-        self.update_indices(tail_schema_encoding_binary, update_data, base_rid)
-        # release_all(locks)
-
-        # self.updates_since_merge += 1
-        # if self.updates_since_merge > NUM_UPDATES_TRIGGER_MERGE:
-        #     self.schedule_merge()
-
-        return True
+            return True
 
     def write_tail_column(self, base_record, column, data):
         with self.tail_col_lock:
