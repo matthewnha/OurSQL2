@@ -58,18 +58,18 @@ class Page:
             return self
 
     def unload(self):
-        with lock_inst.page_lock:
+        with self.page_lock:
             with self.write_latch:
                 self._data = None
                 self.is_loaded = False
     
     def has_capacity(self):
-        with lock_inst.page_lock:
+        with self.page_lock:
             with self.num_records_lock:
                 return self.num_records < (CELLS_PER_PAGE)
 
     def get_num_records(self):
-        with lock_inst.page_lock:
+        with self.page_lock:
 
             with self.num_records_lock:
                 return self.num_records
@@ -80,7 +80,7 @@ class Page:
 
             value: Must be bytes of the specified CELLS_PER_PAGE size
         '''
-        with lock_inst.page_lock:
+        with self.page_lock:
 
             with self.num_records_lock:
                 if not self.has_capacity():
@@ -107,7 +107,7 @@ class Page:
 
             value: Must be bytes of the specified CELLS_PER_PAGE size
         '''
-        with lock_inst.page_lock:
+        with self.page_lock:
             if increment:
                 with self.num_records_lock:
                     self.num_records += 1
@@ -124,7 +124,7 @@ class Page:
             return self.num_records
 
     def write_tps(self, tid):
-        with lock_inst.page_lock:
+        with self.page_lock:
             bytes_to_write = tid.to_bytes(CELL_SIZE_BYTES,'little')
             start = 0
             end = start + CELL_SIZE_BYTES
@@ -140,7 +140,7 @@ class Page:
         '''
             Reads bytes from page, returning a bytearray
         '''
-        with lock_inst.page_lock:
+        with self.page_lock:
             if cellIndex > CELLS_PER_PAGE - 1:
                 raise Exception('cellIndex exceeds page size')
 
@@ -149,7 +149,7 @@ class Page:
             return bytes(self._data[start:end])
 
     def copy(self):
-        with lock_inst.page_lock:
+        with self.page_lock:
             with self.write_latch:
                 copy = Page()
                 copy._data = self._data.copy()
