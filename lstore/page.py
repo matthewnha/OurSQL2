@@ -80,7 +80,6 @@ class Page:
 
             value: Must be bytes of the specified CELLS_PER_PAGE size
         '''
-        with self.page_lock:
 
             with self.num_records_lock:
                 if not self.has_capacity():
@@ -90,6 +89,7 @@ class Page:
                 self.num_records += 1
                 record_num = self.num_records # the number of this particular record (index+1)
 
+        with self.page_lock:
             end = start + CELL_SIZE_BYTES
             if len(value) != CELL_SIZE_BYTES:
                 value = int.from_bytes(value, 'little')
