@@ -4,7 +4,6 @@ none_context = contextmanager(lambda: iter([None]))
 from page import Page
 from pagerange import PageRange
 from config import *
-from latch import *
 from collections import defaultdict
 
 import logging

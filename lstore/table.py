@@ -9,7 +9,6 @@ from config import *
 from util import *
 from mergejob import MergeJob
 from lock import LockManager
-from latch import *
 
 # from diskmanager import DiskManager
 from bufferpool import BufferPool
